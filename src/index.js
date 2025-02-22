@@ -1,10 +1,11 @@
 import fs from 'fs';
 import { chromium } from 'playwright';
 
-import { SESSION_STORAGE_PATH } from './constants.js';
+import { SESSION_STORAGE_PATH, STANDARD_TIMEOUT } from './constants.js';
 
 import { logInToCantonFair } from './auth.js';
-import { extractProductCategories, navigateToCategory } from './scrapers/categories.js';
+import { extractMainCategories, navigateToMainCategoryPage, curateCategories } from './scrapers/categories.js';
+import { appendToJSONFile } from './utils.js';
 
 (async () => {
 	const browser = await chromium.launch({ headless: false });
@@ -16,16 +17,26 @@ import { extractProductCategories, navigateToCategory } from './scrapers/categor
 	} else {
 		console.log('No saved session found. Creating a new session...');
 		context = await browser.newContext();
-		await context.storageState({ path: SESSION_STORAGE_PATH });
 	}
 
 	const page = await context.newPage();
 	await logInToCantonFair(page);
+	await context.storageState({ path: SESSION_STORAGE_PATH });
 
-	const categories = await extractProductCategories(page);
-	console.log({ categories });
+	const categories = await extractMainCategories(page);
 
-	await navigateToCategory(page, context, categories);
+	for (let i = 0, totalCategories = categories.length; i < totalCategories; i++) {
+		const { categoryPage, categoryId, categoryName } = await navigateToMainCategoryPage(page, context, {
+			name: categories[i],
+			index: i,
+		});
+		await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XL_MS);
+		const pageCategories = await curateCategories(categoryPage);
+		const categoryPageDatum = { id: categoryId, name: categoryName, subCategories: pageCategories };
+		appendToJSONFile('./data/categories.json', categoryPageDatum);
 
-	// await browser.close();
+		await categoryPage.close();
+	}
+
+	await browser.close();
 })();
