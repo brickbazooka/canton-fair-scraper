@@ -19,10 +19,12 @@ import { appendToJSONFile } from './utils.js';
 		context = await browser.newContext();
 	}
 
+	// Login sequence
 	const page = await context.newPage();
 	await logInToCantonFair(page);
 	await context.storageState({ path: SESSION_STORAGE_PATH });
 
+	// Category extraction sequence
 	const categories = await extractMainCategories(page);
 
 	for (let i = 0, totalCategories = categories.length; i < totalCategories; i++) {

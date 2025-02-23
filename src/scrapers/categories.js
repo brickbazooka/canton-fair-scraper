@@ -1,7 +1,8 @@
 import { STANDARD_TIMEOUT } from '../constants.js';
 
-async function extractCategoryIdsFromURL(page) {
-	const url = page.url();
+function extractCategoryIdsFromURL(url) {
+	// await page.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
+	// const url = await page.url();
 	const categoryMatch = url.match(/category=([0-9]+)/);
 	const subCategoryMatch = url.match(/scategory=([0-9]+)/);
 	return {
@@ -28,7 +29,8 @@ export async function navigateToMainCategoryPage(page, context, category) {
 	const categoryPage = await context.waitForEvent('page');
 
 	await categoryPage.waitForLoadState('load');
-	const { categoryId } = await extractCategoryIdsFromURL(categoryPage);
+	const categoryPageURL = await categoryPage.url();
+	const { categoryId } = extractCategoryIdsFromURL(categoryPageURL);
 
 	console.log(`Navigated to category: ${categoryName} - ${categoryId}`);
 	return { categoryPage, categoryId, categoryName };
@@ -64,7 +66,7 @@ export async function curateCategories(categoryPage) {
 	}
 	for (const category of pageCategories) {
 		console.log(
-			`Processing the ${category.subCategories.length} subcategories of "${category.name}" (COUNT: ID: ${category.count} | ${category.id})...`
+			`Processing the ${category.subCategories.length} subcategories of "${category.name}" (COUNT: ${category.count} | ID: ${category.id})...`
 		);
 
 		// Click the category to expand the list of subcategories, and wait for the category to expand
@@ -72,19 +74,28 @@ export async function curateCategories(categoryPage) {
 		await categoryElement.click();
 		await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XS_MS);
 
+		let currentURL = await categoryPage.url();
 		for (const subCategory of category.subCategories) {
 			console.log(`Fetching meta for the subcategory: ${subCategory.name} (${subCategory.count})...`);
 
 			// Click the subcategory and wait for the page to load (and the URL to change)
 			const subCategoryElement = await categoryPage
 				.locator(
-					`.index__Collapse--RUAbD[id="${category.id}"] li.index__item--ZSYkz.index__option--PoIIn:has-text("${subCategory.name}")`
+					`.index__Collapse--RUAbD[id="${category.id}"] li.index__item--ZSYkz.index__option--PoIIn:has-text("${subCategory.name}(${subCategory.count})")`
 				)
 				.first();
-			await subCategoryElement.click();
-			await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XS_MS);
 
-			const { subCategoryId } = await extractCategoryIdsFromURL(categoryPage);
+			await subCategoryElement.click();
+			await categoryPage.waitForFunction(
+				(previousURL) => location.href !== previousURL,
+				{ timeout: STANDARD_TIMEOUT.XM_MS },
+				currentURL
+			);
+			currentURL = await categoryPage.url();
+			// await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
+
+			// console.log({ currentURL });
+			const { subCategoryId } = extractCategoryIdsFromURL(currentURL);
 			subCategory.id = subCategoryId;
 		}
 	}
