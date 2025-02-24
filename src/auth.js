@@ -1,13 +1,16 @@
+import { chromium } from 'playwright';
+
 import {
 	CANTON_FAIR_URL,
 	CANTON_FAIR_USERTYPE,
 	CANTON_FAIR_USERNAME,
 	CANTON_FAIR_EMAIL,
 	CANTON_FAIR_PASSWORD,
+	SESSION_STORAGE_PATH,
 	STANDARD_TIMEOUT,
 } from './constants.js';
 
-async function isLoggedIn(page) {
+export async function isLoggedIn(page) {
 	try {
 		await page.waitForSelector('.index__name--Whtb3', { timeout: STANDARD_TIMEOUT.XM_MS });
 		const userName = await page.evaluate(() =>
@@ -19,19 +22,18 @@ async function isLoggedIn(page) {
 	}
 }
 
-export async function logInToCantonFair(page) {
+export async function logInToCantonFair() {
+	const browser = await chromium.launch({ headless: false });
+	const context = await browser.newContext();
+	const page = await context.newPage();
+
 	await page.goto(CANTON_FAIR_URL);
 	await page.waitForLoadState('domcontentloaded');
 
-	if (await isLoggedIn(page)) {
-		console.log('Already logged in. Skipping login process.');
-		return;
-	}
-
-	await page.getByText('Login').click();
+	await page.getByText('Login', { exact: true }).click();
 	await page.waitForLoadState('load');
 
-	await page.getByText(CANTON_FAIR_USERTYPE).click();
+	await page.getByText(CANTON_FAIR_USERTYPE, { exact: true }).click();
 	await page.waitForLoadState('load');
 
 	const userInputSelector = 'input[placeholder="Please enter your account or email"]';
@@ -49,9 +51,14 @@ export async function logInToCantonFair(page) {
 
 	await page.getByRole('button', { name: 'Login' }).click();
 
-	console.log('Solve the CAPTCHA puzzle manually. Wait until you see the "Got It" button...');
+	console.log(
+		'Solve the CAPTCHA puzzle manually. After that, wait until you see the "Got It" button, before resuming.'
+	);
 	await page.pause(); // Wait for manual CAPTCHA solving
 
-	console.log('Resuming automation post CAPTCHA completion...');
+	console.log('Resuming post CAPTCHA completion...');
 	await page.getByText('Got It', { exact: true }).click();
+
+	await context.storageState({ path: SESSION_STORAGE_PATH });
+	await browser.close();
 }

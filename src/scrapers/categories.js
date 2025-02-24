@@ -1,8 +1,6 @@
 import { STANDARD_TIMEOUT } from '../constants.js';
 
 function extractCategoryIdsFromURL(url) {
-	// await page.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
-	// const url = await page.url();
 	const categoryMatch = url.match(/category=([0-9]+)/);
 	const subCategoryMatch = url.match(/scategory=([0-9]+)/);
 	return {
@@ -32,6 +30,7 @@ export async function navigateToMainCategoryPage(page, context, category) {
 	const categoryPageURL = await categoryPage.url();
 	const { categoryId } = extractCategoryIdsFromURL(categoryPageURL);
 
+	console.log('\n\n***\n\n');
 	console.log(`Navigated to category: ${categoryName} - ${categoryId}`);
 	return { categoryPage, categoryId, categoryName };
 }
@@ -61,12 +60,15 @@ export async function curateCategories(categoryPage) {
 
 	if (pageCategories.length === 0) {
 		console.error(
-			'No categories found. Possible reasons: incorrect selector, elements not present on the page, or page not fully loaded. Please verify the selector ".index__Collapse--RUAbD[id]" and ensure the page content is loaded correctly.'
+			'No categories found. ' +
+				'Possible reasons: incorrect selector, elements not present on the page, or page not fully loaded. ' +
+				'Please verify the selector ".index__Collapse--RUAbD[id]" and ensure the page content is loaded correctly.'
 		);
 	}
 	for (const category of pageCategories) {
+		console.log('\n');
 		console.log(
-			`Processing the ${category.subCategories.length} subcategories of "${category.name}" (COUNT: ${category.count} | ID: ${category.id})...`
+			`Processing the ${category.subCategories.length} product categories of "${category.name}" (COUNT: ${category.count} | ID: ${category.id})...`
 		);
 
 		// Click the category to expand the list of subcategories, and wait for the category to expand
@@ -76,7 +78,7 @@ export async function curateCategories(categoryPage) {
 
 		let currentURL = await categoryPage.url();
 		for (const subCategory of category.subCategories) {
-			console.log(`Fetching meta for the subcategory: ${subCategory.name} (${subCategory.count})...`);
+			console.log(`- Fetching meta for the product category: ${subCategory.name} (${subCategory.count})...`);
 
 			// Click the subcategory and wait for the page to load (and the URL to change)
 			const subCategoryElement = await categoryPage
@@ -92,13 +94,71 @@ export async function curateCategories(categoryPage) {
 				currentURL
 			);
 			currentURL = await categoryPage.url();
-			// await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
 
-			// console.log({ currentURL });
 			const { subCategoryId } = extractCategoryIdsFromURL(currentURL);
 			subCategory.id = subCategoryId;
 		}
 	}
 
 	return pageCategories;
+}
+
+function objectifyCategoryStr(categoryStr) {
+	const match = categoryStr.match(/^(.*) \(([^)]+)\)$/);
+	return {
+		name: match[1].trim(),
+		id: match[2].trim(),
+	};
+}
+
+export function normalizeCategoriesData(categoriesData) {
+	function traverseCategories(categories, parentPath = '', normalized = { productCategories: [] }) {
+		for (const category of categories) {
+			if (category.name === 'International Pavilion' || category.name === 'Trade Services') {
+				continue;
+			}
+			const { id: categoryId, name: categoryName, subCategories } = category;
+			const currentPath = parentPath
+				? `${parentPath} -> ${categoryName} (${categoryId})`
+				: `${categoryName} (${categoryId})`;
+
+			if (subCategories?.length > 0) {
+				traverseCategories(subCategories, currentPath, normalized);
+			}
+
+			if (!subCategories) {
+				if (currentPath.split(' -> ').length !== 3) {
+					throw new Error(`Invalid path for a product category: ${currentPath}`);
+				}
+				const [mainCategory, subCategory, productCategory] = currentPath
+					.split(' -> ')
+					.map(objectifyCategoryStr);
+
+				if (mainCategory.id.length !== 18 || productCategory.id.length !== 18) {
+					console.error(
+						'Invalid category ID length for a/an main/end category: ' +
+							`${mainCategory.name} (${mainCategory.id}) OR ${productCategory.name} (${productCategory.id})`
+					);
+					continue;
+				}
+				if (!normalized[mainCategory.id]) {
+					normalized[mainCategory.id] = mainCategory;
+				}
+				if (!normalized[subCategory.id]) {
+					normalized[subCategory.id] = subCategory;
+				}
+				if (!normalized[productCategory.id]) {
+					normalized[productCategory.id] = {
+						...productCategory,
+						subCategory: subCategory.id,
+						mainCategory: mainCategory.id,
+					};
+				}
+
+				normalized.productCategories.push(productCategory.id);
+			}
+		}
+		return normalized;
+	}
+	return traverseCategories(categoriesData);
 }
