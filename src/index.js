@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+
 import { chromium } from 'playwright';
 
 import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from './constants.js';
@@ -13,7 +14,11 @@ import {
 	extractSubCategories,
 	normalizeCategoriesData,
 } from './scrapers/categories.js';
-import { extractProductsFromCategory, createExcelWorkbookFromProductsJSON } from './scrapers/products.js';
+import {
+	extractProductsFromCategory,
+	writeProductsDataToExcelWorkbook,
+	curateAllProductsDataInExcel,
+} from './scrapers/products.js';
 
 async function loginSequence(options = { headless: true }) {
 	const { headless } = options;
@@ -148,7 +153,7 @@ async function productExtractionSequence(options = { headless: true }) {
 						i + 1
 					}/${totalCategories}) ${productCategoryId}.xlsx exists. Skipping the product extraction process for ${
 						productCategory.name
-					} (ID: ${productCategoryId}).`
+					}.`
 				);
 				continue;
 			}
@@ -163,16 +168,16 @@ async function productExtractionSequence(options = { headless: true }) {
 				fs.mkdirSync(outputDir);
 			}
 
-			const workbook = createExcelWorkbookFromProductsJSON(
-				productCategoryId,
-				JSON.parse(fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.json`), 'utf-8')),
-				normalizedCategoriesData
-			);
+			const workbook = writeProductsDataToExcelWorkbook({
+				worksheetName: 'Products',
+				productCategory,
+				productsArray: JSON.parse(
+					fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.json`), 'utf-8')
+				),
+			});
 			const outputFilePath = path.join(outputDir, `${productCategoryId}.xlsx`);
 			await workbook.xlsx.writeFile(outputFilePath);
-			console.log(
-				`Excel file created for category ${productCategory.name} (ID: ${productCategoryId}): ${outputFilePath}`
-			);
+			console.log(`Excel file created for the category "${productCategory.name}": ${outputFilePath}`);
 		}
 
 		await browser.close();
@@ -199,6 +204,6 @@ async function errorTolerantProductExtractionSequence(options = { headless: true
 
 (async () => {
 	await categoryExtractionSequence({ headless: true });
-
 	await errorTolerantProductExtractionSequence({ headless: true });
+	curateAllProductsDataInExcel();
 })();

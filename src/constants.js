@@ -20,4 +20,5 @@ export const PATHS = {
 	CATEGORIES_JSON: path.join(SCRAPED_DATA_DIR, 'categories.json'),
 	NORMALIZED_CATEGORIES_JSON: path.join(SCRAPED_DATA_DIR, 'normalized_categories.json'),
 	PRODUCTS_DATA_DIR: path.join(SCRAPED_DATA_DIR, 'products'),
+	CURATED_PRODUCTS_XLSX: path.join(SCRAPED_DATA_DIR, 'curated.xlsx'),
 };
