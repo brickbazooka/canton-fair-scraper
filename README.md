@@ -47,14 +47,16 @@ npm start
 
 ## Configuration
 
-The scraper can be configured using the `config.js` file. You can specify the categories to scrape by adding their IDs to the `CATEGORIES_TO_SCRAPE` array.
+The scraper can be configured using the `./config.js` file. You can specify the categories to scrape by adding their IDs to the `CATEGORIES_TO_SCRAPE` array.
 
 ```javascript
-// config.js
+// Leave this empty to scrape all categories
+const CATEGORIES_TO_SCRAPE = [
+	'461147962869833728', // Electronics & Appliance > Household Electrical Appliances > Home Appliances
+	'461147343081705472', // Health & Recreation > Medicines, Health Products and Medical Devices
+];
+
 export default {
-	CATEGORIES_TO_SCRAPE: [
-		'461147962869833728', // Electronics & Appliance > Household Electrical Appliances > Home Appliances
-		'461147343081705472', // Health & Recreation > Medicines, Health Products and Medical Devices
-	],
+	CATEGORIES_TO_SCRAPE,
 };
 ```
