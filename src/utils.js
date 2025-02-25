@@ -23,3 +23,23 @@ export function getTimeDifference(startTime, endTime) {
 	const seconds = Math.floor((timeDifference % 60000) / 1000);
 	return { hours, minutes, seconds };
 }
+
+export function withTimer(fn) {
+	return async function (...args) {
+		const startTime = Date.now();
+		console.log(`TIME: ${new Date(startTime).toLocaleTimeString()}`);
+
+		const result = await fn(...args);
+
+		const endTime = Date.now();
+		const { hours, minutes, seconds } = getTimeDifference(startTime, endTime);
+
+		console.log('\n***\n');
+		console.log(`TIME: ${new Date(endTime).toLocaleTimeString()}`);
+		console.log(
+			`Total time elapsed: ${hours > 0 ? `${hours}h ` : ''}${minutes > 0 ? `${minutes}m ` : ''}${seconds}s`
+		);
+
+		return result;
+	};
+}

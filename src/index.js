@@ -19,6 +19,7 @@ import {
 	writeProductsDataToExcelWorkbook,
 	curateAllProductsDataInExcel,
 } from './scrapers/products.js';
+import { withTimer } from './utils.js';
 
 async function loginSequence(options = { headless: true }) {
 	const { headless } = options;
@@ -61,6 +62,7 @@ async function loginSequence(options = { headless: true }) {
 
 async function categoryExtractionSequence(options = { headless: true }) {
 	if (fs.existsSync(path.join(PATHS.NORMALIZED_CATEGORIES_JSON))) {
+		console.log('\n***\n');
 		console.log("Normalized categories' data already exists. Skipping the category extraction process.");
 		return;
 	}
@@ -201,10 +203,12 @@ async function errorTolerantProductExtractionSequence(options = { headless: true
 	}
 }
 
-(async () => {
+async function runScrapingSequence() {
 	await categoryExtractionSequence({ headless: true });
 
 	await errorTolerantProductExtractionSequence({ headless: true });
 
 	curateAllProductsDataInExcel();
-})();
+}
+
+withTimer(runScrapingSequence)();
