@@ -193,13 +193,19 @@ async function productExtractionSequence(options = { headless: true }) {
 }
 
 async function errorTolerantProductExtractionSequence(options = { headless: true }) {
+	if (options.logMessage) {
+		console.log(options.logMessage);
+	}
+
 	const { error, browser } = await productExtractionSequence(options);
 
 	if (error) {
 		console.log('Closing the browser...');
 		await browser.close();
-		console.log('Retrying product extraction sequence...');
-		await errorTolerantProductExtractionSequence(options);
+		await errorTolerantProductExtractionSequence({
+			...options,
+			logMessage: 'Retrying product extraction sequence...',
+		});
 	}
 }
 
