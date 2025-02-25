@@ -1,30 +1,34 @@
 import fs from 'fs';
+import path from 'path';
 import { chromium } from 'playwright';
 
 import { CANTON_FAIR_URL, STANDARD_TIMEOUT, SESSION_STORAGE_PATH } from './constants.js';
 
-import { isLoggedIn, logInToCantonFair } from './auth.js';
+import config from '../config.js';
+
+import { isLoggedIn, logInToCantonFair } from './scrapers/auth.js';
 import {
 	extractMainCategories,
 	navigateToMainCategoryPage,
-	curateCategories,
+	extractSubCategories,
 	normalizeCategoriesData,
 } from './scrapers/categories.js';
-import { extractProductsFromCategory } from './scrapers/products.js';
-import { appendToJSONArrFile, appendToJSONObjFile } from './utils.js';
+import { extractProductsFromCategory, createExcelWorkbookFromProductsJSON } from './scrapers/products.js';
 
 async function loginSequence(options = { headless: true }) {
 	const { headless } = options;
 	const browser = await chromium.launch({ headless });
 	let context;
 
+	console.log('\n***\n');
 	if (fs.existsSync(SESSION_STORAGE_PATH)) {
-		console.log('Loading existing session...');
+		console.log('Launched a new browser. Loading existing session...');
 		context = await browser.newContext({ storageState: SESSION_STORAGE_PATH });
 	} else {
-		console.log('No saved session found. Creating a new session...');
+		console.log('Launched a new browser. No saved session found. Creating a new session...');
 		context = await browser.newContext();
 	}
+	console.log('\n***\n');
 
 	const page = await context.newPage();
 
@@ -35,10 +39,12 @@ async function loginSequence(options = { headless: true }) {
 		console.log('Not logged in. Instantiating the login process in a new browser...');
 
 		/*
-		 ** The reason behind closing the browser here (and then reopening it below by calling loginSequence() again with a "logged in" session),
-		 ** is to retain the choice of executing the scraping process in a headless browser.
+		 ** Since the login process requires manual CAPTCHA solving, we have no other choice but to do the login process in a non-headless (visible) browser.
+		 ** However, we can still choose to execute the scraping process in a headless (non-visible) browser.
 		 **
-		 ** Since the login process requires manual CAPTCHA solving, we have no other choice but to do it in a non-headless browser
+		 ** And that is the reason behind closing the browser here, and then reopening it below (by calling loginSequence() again with a "logged in" session).
+		 ** It's done to retain the choice of executing the scraping process in a headless/non-headless browser, irrespective of the login process.
+		 **
 		 */
 		await browser.close();
 		await logInToCantonFair();
@@ -55,27 +61,23 @@ async function categoryExtractionSequence(options = { headless: true }) {
 		return;
 	}
 
-	const { browser, context, page } = await loginSequence();
+	const { browser, context, page } = await loginSequence(options);
 
 	const categories = await extractMainCategories(page);
 
-	const categoriesData = [];
 	for (let i = 0, totalCategories = categories.length; i < totalCategories; i++) {
 		const { categoryPage, categoryId, categoryName } = await navigateToMainCategoryPage(page, context, {
 			name: categories[i],
 			index: i,
 		});
 		await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XL_MS);
-		const pageCategories = await curateCategories(categoryPage);
-		const categoryPageDatum = { id: categoryId, name: categoryName, subCategories: pageCategories };
-
-		appendToJSONArrFile('./data/categories.json', categoryPageDatum);
-		categoriesData.push(categoryPageDatum);
+		await extractSubCategories({ categoryId, categoryName, categoryPage });
 
 		await categoryPage.close();
 	}
 
-	const normalizedCategoriesData = normalizeCategoriesData(categoriesData);
+	const categoriesData = fs.readFileSync('./data/categories.json', 'utf-8');
+	const normalizedCategoriesData = normalizeCategoriesData(JSON.parse(categoriesData));
 	fs.writeFileSync('./data/normalized_categories.json', JSON.stringify(normalizedCategoriesData, null, 2));
 
 	await browser.close();
@@ -84,38 +86,122 @@ async function categoryExtractionSequence(options = { headless: true }) {
 async function productExtractionSequence(options = { headless: true }) {
 	const { browser, context, page } = await loginSequence(options);
 
+	let productCategories = [];
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync('./data/normalized_categories.json', 'utf-8'));
 
-	const { productCategories } = normalizedCategoriesData;
+	const categoriesToScrape = config.CATEGORIES_TO_SCRAPE || [];
 
-	// let products = {};
+	for (const categoryIdToScrape of categoriesToScrape) {
+		const categoryToScrape = normalizedCategoriesData[categoryIdToScrape];
 
-	// TODO: Remove the "1 ||" part of the loop condition
-	for (let i = 0, totalCategories = 1 || productCategories.length; i < totalCategories; i++) {
-		const productCategoryId = productCategories[i];
-		const productCategory = normalizedCategoriesData[productCategoryId];
+		if (categoryToScrape.isProductCategory) {
+			productCategories.push(categoryIdToScrape);
+			continue;
+		}
 
-		productCategory.subCategory = normalizedCategoriesData[productCategory.subCategory];
-		productCategory.mainCategory = normalizedCategoriesData[productCategory.mainCategory];
+		if (categoryToScrape.isSubCategory) {
+			for (const categoryId in normalizedCategoriesData) {
+				const category = normalizedCategoriesData[categoryId];
+				const categoryIsRequiredProductCategory =
+					category.isProductCategory && category.subCategoryId === categoryIdToScrape;
+				if (categoryIsRequiredProductCategory) {
+					productCategories.push(category.id);
+				}
+			}
+			continue;
+		}
 
-		await extractProductsFromCategory(context, productCategory);
-		// const extractedProducts = await extractProductsFromCategory(context, productCategory, products);
-		// products[productCategoryId] = extractedProducts;
+		if (categoryToScrape.isMainCategory) {
+			for (const categoryId in normalizedCategoriesData) {
+				const category = normalizedCategoriesData[categoryId];
+				const categoryIsRequiredProductCategory =
+					category.isProductCategory && category.mainCategoryId === categoryIdToScrape;
+				if (categoryIsRequiredProductCategory) {
+					productCategories.push(category.id);
+				}
+			}
+			continue;
+		}
 	}
 
-	// appendToJSONObjFile('./data/products.json', products);
-	await browser.close();
+	/*
+	 ** We have to deal with duplicate product category additions in instances where
+	 ** CATEGORIES_TO_SCRAPE contains a product category, and a main/sub category that
+	 ** also contains the same product category.
+	 */
+	productCategories = [...new Set(productCategories)];
+
+	if (productCategories.length === 0) {
+		console.log('No valid config found. Scraping all product categories...');
+		productCategories = normalizedCategoriesData.productCategories;
+	}
+
+	console.log(`${productCategories.length} product categories to scrape...`);
+	try {
+		for (let i = 0, totalCategories = productCategories.length; i < totalCategories; i++) {
+			const productCategoryId = productCategories[i];
+			const productCategory = normalizedCategoriesData[productCategoryId];
+
+			if (fs.existsSync(`./data/products/${productCategoryId}.xlsx`)) {
+				console.log(
+					`- (${
+						i + 1
+					}/${totalCategories}) ${productCategoryId}.xlsx exists. Skipping the product extraction process for ${
+						productCategory.name
+					} (ID: ${productCategoryId}).`
+				);
+				continue;
+			}
+
+			productCategory.subCategory = normalizedCategoriesData[productCategory.subCategoryId];
+			productCategory.mainCategory = normalizedCategoriesData[productCategory.mainCategoryId];
+
+			await extractProductsFromCategory(context, productCategory);
+
+			const outputDir = path.join('./data', 'products');
+			if (!fs.existsSync(outputDir)) {
+				fs.mkdirSync(outputDir);
+			}
+
+			const workbook = createExcelWorkbookFromProductsJSON(
+				productCategoryId,
+				JSON.parse(fs.readFileSync(`./data/products/${productCategoryId}.json`, 'utf-8')),
+				normalizedCategoriesData
+			);
+			const outputFilePath = path.join(outputDir, `${productCategoryId}.xlsx`);
+			await workbook.xlsx.writeFile(outputFilePath);
+			console.log(
+				`Excel file created for category ${productCategory.name} (ID: ${productCategoryId}): ${outputFilePath}`
+			);
+		}
+
+		await browser.close();
+		return { error: null, browser: null };
+	} catch (error) {
+		console.log('\n***\n');
+		console.error('An error occurred while extracting products:', error);
+		console.log('\n***\n');
+
+		return { error, browser };
+	}
+}
+
+async function errorTolerantProductExtractionSequence(options = { headless: true }) {
+	const { error, browser } = await productExtractionSequence(options);
+
+	if (error) {
+		console.log('Closing the browser...');
+		await browser.close();
+		console.log('Retrying product extraction sequence...');
+		await errorTolerantProductExtractionSequence(options);
+	}
 }
 
 (async () => {
-	await categoryExtractionSequence();
+	const categoryExtractionOptions = { headless: true };
+	const productExtractionOptions = { headless: true };
 
-	const productSequenceTime = {
-		start: new Date().toLocaleString(),
-		end: null,
-	};
-	console.log(`Starting product extraction sequence at ${productSequenceTime.start}...`);
-	await productExtractionSequence({ headless: false });
-	productSequenceTime.end = new Date().toLocaleString();
-	console.log('Product extraction sequnce time:', JSON.stringify(productSequenceTime, null, 2));
+	await categoryExtractionSequence(categoryExtractionOptions);
+
+	await errorTolerantProductExtractionSequence(productExtractionOptions);
 })();

@@ -1,14 +1,11 @@
 import { chromium } from 'playwright';
 
-import {
-	CANTON_FAIR_URL,
-	CANTON_FAIR_USERTYPE,
-	CANTON_FAIR_USERNAME,
-	CANTON_FAIR_EMAIL,
-	CANTON_FAIR_PASSWORD,
-	SESSION_STORAGE_PATH,
-	STANDARD_TIMEOUT,
-} from './constants.js';
+import { CANTON_FAIR_URL, SESSION_STORAGE_PATH, STANDARD_TIMEOUT } from '../constants.js';
+
+import dotenv from 'dotenv';
+dotenv.config();
+
+const { CANTON_FAIR_USERTYPE, CANTON_FAIR_USERNAME, CANTON_FAIR_EMAIL, CANTON_FAIR_PASSWORD } = process.env;
 
 export async function isLoggedIn(page) {
 	try {

@@ -1,4 +1,5 @@
 import { STANDARD_TIMEOUT } from '../constants.js';
+import { appendToJSONArrFile } from '../utils.js';
 
 function extractCategoryIdsFromURL(url) {
 	const categoryMatch = url.match(/category=([0-9]+)/);
@@ -30,12 +31,12 @@ export async function navigateToMainCategoryPage(page, context, category) {
 	const categoryPageURL = await categoryPage.url();
 	const { categoryId } = extractCategoryIdsFromURL(categoryPageURL);
 
-	console.log('\n\n***\n\n');
+	console.log('\n***\n');
 	console.log(`Navigated to category: ${categoryName} - ${categoryId}`);
 	return { categoryPage, categoryId, categoryName };
 }
 
-export async function curateCategories(categoryPage) {
+export async function extractSubCategories({ categoryId, categoryName, categoryPage }) {
 	const pageCategories = await categoryPage.$$eval('.index__Collapse--RUAbD[id]', (nodes) => {
 		return nodes.map((node) => {
 			const titleText = node.querySelector('.index__text--lKhSS')?.textContent.trim() || '';
@@ -64,7 +65,9 @@ export async function curateCategories(categoryPage) {
 				'Possible reasons: incorrect selector, elements not present on the page, or page not fully loaded. ' +
 				'Please verify the selector ".index__Collapse--RUAbD[id]" and ensure the page content is loaded correctly.'
 		);
+		return;
 	}
+
 	for (const category of pageCategories) {
 		console.log('\n');
 		console.log(
@@ -100,18 +103,20 @@ export async function curateCategories(categoryPage) {
 		}
 	}
 
+	const categoryPageDatum = { id: categoryId, name: categoryName, subCategories: pageCategories };
+	appendToJSONArrFile('./data/categories.json', categoryPageDatum);
 	return pageCategories;
 }
 
-function objectifyCategoryStr(categoryStr) {
-	const match = categoryStr.match(/^(.*) \(([^)]+)\)$/);
-	return {
-		name: match[1].trim(),
-		id: match[2].trim(),
-	};
-}
-
 export function normalizeCategoriesData(categoriesData) {
+	function objectifyCategoryStr(categoryStr) {
+		const match = categoryStr.match(/^(.*) \(([^)]+)\)$/);
+		return {
+			name: match[1].trim(),
+			id: match[2].trim(),
+		};
+	}
+
 	function traverseCategories(categories, parentPath = '', normalized = { productCategories: [] }) {
 		for (const category of categories) {
 			if (category.name === 'International Pavilion' || category.name === 'Trade Services') {
@@ -142,16 +147,22 @@ export function normalizeCategoriesData(categoriesData) {
 					continue;
 				}
 				if (!normalized[mainCategory.id]) {
-					normalized[mainCategory.id] = mainCategory;
+					normalized[mainCategory.id] = { ...mainCategory, isMainCategory: true };
 				}
 				if (!normalized[subCategory.id]) {
-					normalized[subCategory.id] = subCategory;
+					normalized[subCategory.id] = {
+						...subCategory,
+						mainCategoryId: mainCategory.id,
+						isSubCategory: true,
+					};
 				}
 				if (!normalized[productCategory.id]) {
 					normalized[productCategory.id] = {
 						...productCategory,
-						subCategory: subCategory.id,
-						mainCategory: mainCategory.id,
+						subCategoryId: subCategory.id,
+						mainCategoryId: mainCategory.id,
+						isProductCategory: true,
+						categoryPath: `${mainCategory.name} > ${subCategory.name} > ${productCategory.name}`,
 					};
 				}
 
