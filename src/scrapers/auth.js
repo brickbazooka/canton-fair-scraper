@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import readline from 'readline';
 
 import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 
@@ -48,12 +49,21 @@ export async function logInToCantonFair() {
 
 	await page.getByRole('button', { name: 'Login' }).click();
 
-	console.log(
-		'Solve the CAPTCHA puzzle manually. After that, wait until you see the "Got It" button, before resuming.'
-	);
-	await page.pause(); // Wait for manual CAPTCHA solving
+	console.log('Please solve the CAPTCHA puzzle manually. Pausing execution...');
 
-	console.log('Resuming post CAPTCHA completion...');
+	const rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout,
+	});
+
+	await new Promise((resolve) => {
+		rl.question('After login, wait until you see the "Got It" button, then press the ENTER key to resume.', () => {
+			rl.close();
+			resolve();
+		});
+	});
+
+	console.log('Resuming execution post login...');
 	await page.getByText('Got It', { exact: true }).click();
 
 	await context.storageState({ path: PATHS.SESSION_STORAGE });

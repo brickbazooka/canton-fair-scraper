@@ -33,7 +33,6 @@ async function loginSequence(options = { headless: true }) {
 		console.log('Launched a new browser. No saved session found. Creating a new session...');
 		context = await browser.newContext();
 	}
-	console.log('\n***\n');
 
 	const page = await context.newPage();
 
@@ -151,9 +150,9 @@ async function productExtractionSequence(options = { headless: true }) {
 				console.log(
 					`- (${
 						i + 1
-					}/${totalCategories}) ${productCategoryId}.xlsx exists. Skipping the product extraction process for ${
+					}/${totalCategories}) ${productCategoryId}.xlsx exists. Skipping the product extraction process for "${
 						productCategory.name
-					}.`
+					}".`
 				);
 				continue;
 			}
@@ -204,6 +203,8 @@ async function errorTolerantProductExtractionSequence(options = { headless: true
 
 (async () => {
 	await categoryExtractionSequence({ headless: true });
+
 	await errorTolerantProductExtractionSequence({ headless: true });
+
 	curateAllProductsDataInExcel();
 })();

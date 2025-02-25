@@ -109,6 +109,8 @@ export async function extractSubCategories({ categoryId, categoryName, categoryP
 }
 
 export function normalizeCategoriesData(categoriesData) {
+	console.log('\n***\n');
+	console.log('Normalizing categories data...');
 	function objectifyCategoryStr(categoryStr) {
 		const match = categoryStr.match(/^(.*) \(([^)]+)\)$/);
 		return {
@@ -140,9 +142,9 @@ export function normalizeCategoriesData(categoriesData) {
 					.map(objectifyCategoryStr);
 
 				if (mainCategory.id.length !== 18 || productCategory.id.length !== 18) {
+					const productCategoryPath = `${mainCategory.name} > ${productCategory.name}`;
 					console.error(
-						'Invalid category ID length for a/an main/end category: ' +
-							`${mainCategory.name} (${mainCategory.id}) OR ${productCategory.name} (${productCategory.id})`
+						`- Skipping a category with an invalid category ID length: ${productCategoryPath} (${productCategory.id})`
 					);
 					continue;
 				}

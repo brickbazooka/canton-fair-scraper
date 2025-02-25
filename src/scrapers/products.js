@@ -247,9 +247,9 @@ export function curateAllProductsDataInExcel() {
 		cell.font = { color: { argb: 'FF0000FF' }, underline: true, color: { theme: 10 } };
 	});
 
-	workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
 	console.log('\n***\n');
 	console.log(
-		`Excel file created for all the available ${productFiles.length} product categories: ${PATHS.CURATED_PRODUCTS_XLSX}`
+		`Creating an Excel file for all the available ${productFiles.length} product categories at ${PATHS.CURATED_PRODUCTS_XLSX} ...`
 	);
+	workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
 }
