@@ -184,6 +184,7 @@ export function curateAllProductsDataInExcel() {
 		productCategory.mainCategory = normalizedCategoriesData[productCategory.mainCategoryId];
 
 		const productsArray = JSON.parse(fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, productFile), 'utf-8'));
+		productCategory.productsCount = new Set(productsArray.flat().map((product) => JSON.stringify(product))).size;
 
 		workbook = writeProductsDataToExcelWorkbook({
 			workbook,
@@ -195,6 +196,7 @@ export function curateAllProductsDataInExcel() {
 
 	productsInfoWorksheet.columns = [
 		{ header: 'Product Category', key: 'categoryPath', width: 120 },
+		{ header: 'Count', key: 'productsCount', width: 10 },
 		{ header: 'Sheet', key: 'productSheetName', width: 30 },
 	];
 
@@ -202,26 +204,11 @@ export function curateAllProductsDataInExcel() {
 		const productCategoryId = productFile.replace('.json', '');
 		const productCategory = normalizedCategoriesData[productCategoryId];
 
-		productsInfoWorksheet
-			.addRow({
-				categoryPath: productCategory.categoryPath,
-				productSheetName: { text: `CID_${productCategoryId}`, hyperlink: `#'CID_${productCategoryId}'!A1` },
-			})
-			// Bold the product category name and the sheet name
-			.eachCell((cell, colNumber) => {
-				if (colNumber === 1) {
-					const parts = cell.value.split(' > ');
-					cell.value = {
-						richText: parts.map((part, index) => ({
-							text: part + (index < parts.length - 1 ? ' > ' : ''),
-							font: index === parts.length - 1 ? { bold: true } : {},
-						})),
-					};
-				}
-				if (colNumber === 2) {
-					cell.font = { bold: true };
-				}
-			});
+		productsInfoWorksheet.addRow({
+			categoryPath: productCategory.categoryPath,
+			productsCount: productCategory.productsCount,
+			productSheetName: { text: `CID_${productCategoryId}`, hyperlink: `#'CID_${productCategoryId}'!A1` },
+		});
 	});
 
 	// Make the header row sticky
@@ -234,7 +221,22 @@ export function curateAllProductsDataInExcel() {
 		cell.alignment = { vertical: 'middle', horizontal: 'center' };
 		cell.protection = { locked: true };
 	});
-	productsInfoWorksheet.autoFilter = { from: 'A1', to: 'B1' };
+	productsInfoWorksheet.autoFilter = { from: 'A1', to: 'C1' };
+
+	// Bold the product category names
+	productsInfoWorksheet.getColumn('categoryPath').eachCell((cell, rowNumber) => {
+		// Skip the header row
+		if (rowNumber === 1) {
+			return;
+		}
+		const parts = cell.value.split(' > ');
+		cell.value = {
+			richText: parts.map((part, index) => ({
+				text: part + (index < parts.length - 1 ? ' > ' : ''),
+				font: index === parts.length - 1 ? { bold: true } : {},
+			})),
+		};
+	});
 
 	productsInfoWorksheet.getColumn('productSheetName').eachCell((cell, rowNumber) => {
 		// Skip the header row
