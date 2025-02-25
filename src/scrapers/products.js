@@ -1,9 +1,9 @@
 import fs from 'fs';
+import path from 'path';
 import ExcelJS from 'exceljs';
 
-import { CANTON_FAIR_URL, STANDARD_TIMEOUT } from '../constants.js';
+import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
-import { text } from 'stream/consumers';
 
 async function getTotalProductPages(page, itemsPerPage) {
 	const totalItemsText = await page.$eval('.index__total--hiD2n', (el) => el.textContent);
@@ -31,7 +31,7 @@ export async function extractProductsFromCategory(context, productCategory) {
 
 	const maxProductsPerPage = 60;
 
-	const url = `https://www.cantonfair.org.cn/en-US/detailed?category=${mainCategoryId}&scategory=${productCategoryId}&size=${maxProductsPerPage}`;
+	const url = `${CANTON_FAIR_URL}detailed?category=${mainCategoryId}&scategory=${productCategoryId}&size=${maxProductsPerPage}`;
 	const page = await context.newPage();
 	await page.goto(url);
 	await page.waitForLoadState('load');
@@ -40,10 +40,11 @@ export async function extractProductsFromCategory(context, productCategory) {
 
 	const totalProductPages = await getTotalProductPages(page, maxProductsPerPage);
 
-	// Determine the starting page number based on the number of entries in `./data/products/${productCategoryId}.json`
+	// Determine the starting page number based on the number of entries in existing product category data
 	let existingProductPagesCount = 0;
-	if (fs.existsSync(`./data/products/${productCategoryId}.json`)) {
-		const existingProductPages = JSON.parse(fs.readFileSync(`./data/products/${productCategoryId}.json`, 'utf-8'));
+	const productCategoryDataPath = path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.json`);
+	if (fs.existsSync(productCategoryDataPath)) {
+		const existingProductPages = JSON.parse(fs.readFileSync(productCategoryDataPath, 'utf-8'));
 		existingProductPagesCount = existingProductPages.length;
 	}
 
@@ -61,7 +62,7 @@ export async function extractProductsFromCategory(context, productCategory) {
 		console.log(`- Fetching ~${maxProductsPerPage} products from page ${i} of ${totalProductPages}...`);
 		const extractedProducts = await extractProductsOnPage(context, page);
 
-		appendToJSONArrFile(`./data/products/${productCategoryId}.json`, extractedProducts);
+		appendToJSONArrFile(productCategoryDataPath, extractedProducts);
 	}
 }
 

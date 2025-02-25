@@ -1,4 +1,4 @@
-import { STANDARD_TIMEOUT } from '../constants.js';
+import { STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
 
 function extractCategoryIdsFromURL(url) {
@@ -104,7 +104,7 @@ export async function extractSubCategories({ categoryId, categoryName, categoryP
 	}
 
 	const categoryPageDatum = { id: categoryId, name: categoryName, subCategories: pageCategories };
-	appendToJSONArrFile('./data/categories.json', categoryPageDatum);
+	appendToJSONArrFile(PATHS.CATEGORIES_JSON, categoryPageDatum);
 	return pageCategories;
 }
 

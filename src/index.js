@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { chromium } from 'playwright';
 
-import { CANTON_FAIR_URL, STANDARD_TIMEOUT, SESSION_STORAGE_PATH } from './constants.js';
+import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from './constants.js';
 
 import config from '../config.js';
 
@@ -21,9 +21,9 @@ async function loginSequence(options = { headless: true }) {
 	let context;
 
 	console.log('\n***\n');
-	if (fs.existsSync(SESSION_STORAGE_PATH)) {
+	if (fs.existsSync(PATHS.SESSION_STORAGE)) {
 		console.log('Launched a new browser. Loading existing session...');
-		context = await browser.newContext({ storageState: SESSION_STORAGE_PATH });
+		context = await browser.newContext({ storageState: PATHS.SESSION_STORAGE });
 	} else {
 		console.log('Launched a new browser. No saved session found. Creating a new session...');
 		context = await browser.newContext();
@@ -56,7 +56,7 @@ async function loginSequence(options = { headless: true }) {
 }
 
 async function categoryExtractionSequence(options = { headless: true }) {
-	if (fs.existsSync('./data/normalized_categories.json')) {
+	if (fs.existsSync(path.join(PATHS.NORMALIZED_CATEGORIES_JSON))) {
 		console.log("Normalized categories' data already exists. Skipping the category extraction process.");
 		return;
 	}
@@ -76,18 +76,18 @@ async function categoryExtractionSequence(options = { headless: true }) {
 		await categoryPage.close();
 	}
 
-	const categoriesData = fs.readFileSync('./data/categories.json', 'utf-8');
+	const categoriesData = fs.readFileSync(PATHS.CATEGORIES_JSON, 'utf-8');
 	const normalizedCategoriesData = normalizeCategoriesData(JSON.parse(categoriesData));
-	fs.writeFileSync('./data/normalized_categories.json', JSON.stringify(normalizedCategoriesData, null, 2));
+	fs.writeFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, JSON.stringify(normalizedCategoriesData, null, 2));
 
 	await browser.close();
 }
 
 async function productExtractionSequence(options = { headless: true }) {
-	const { browser, context, page } = await loginSequence(options);
+	const { browser, context } = await loginSequence(options);
 
 	let productCategories = [];
-	const normalizedCategoriesData = JSON.parse(fs.readFileSync('./data/normalized_categories.json', 'utf-8'));
+	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
 
 	const categoriesToScrape = config.CATEGORIES_TO_SCRAPE || [];
 
@@ -142,7 +142,7 @@ async function productExtractionSequence(options = { headless: true }) {
 			const productCategoryId = productCategories[i];
 			const productCategory = normalizedCategoriesData[productCategoryId];
 
-			if (fs.existsSync(`./data/products/${productCategoryId}.xlsx`)) {
+			if (fs.existsSync(path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.xlsx`))) {
 				console.log(
 					`- (${
 						i + 1
@@ -158,14 +158,14 @@ async function productExtractionSequence(options = { headless: true }) {
 
 			await extractProductsFromCategory(context, productCategory);
 
-			const outputDir = path.join('./data', 'products');
+			const outputDir = PATHS.PRODUCTS_DATA_DIR;
 			if (!fs.existsSync(outputDir)) {
 				fs.mkdirSync(outputDir);
 			}
 
 			const workbook = createExcelWorkbookFromProductsJSON(
 				productCategoryId,
-				JSON.parse(fs.readFileSync(`./data/products/${productCategoryId}.json`, 'utf-8')),
+				JSON.parse(fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.json`), 'utf-8')),
 				normalizedCategoriesData
 			);
 			const outputFilePath = path.join(outputDir, `${productCategoryId}.xlsx`);
@@ -198,10 +198,7 @@ async function errorTolerantProductExtractionSequence(options = { headless: true
 }
 
 (async () => {
-	const categoryExtractionOptions = { headless: true };
-	const productExtractionOptions = { headless: true };
+	await categoryExtractionSequence({ headless: true });
 
-	await categoryExtractionSequence(categoryExtractionOptions);
-
-	await errorTolerantProductExtractionSequence(productExtractionOptions);
+	await errorTolerantProductExtractionSequence({ headless: true });
 })();

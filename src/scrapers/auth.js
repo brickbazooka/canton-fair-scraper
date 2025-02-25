@@ -1,6 +1,6 @@
 import { chromium } from 'playwright';
 
-import { CANTON_FAIR_URL, SESSION_STORAGE_PATH, STANDARD_TIMEOUT } from '../constants.js';
+import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -56,6 +56,6 @@ export async function logInToCantonFair() {
 	console.log('Resuming post CAPTCHA completion...');
 	await page.getByText('Got It', { exact: true }).click();
 
-	await context.storageState({ path: SESSION_STORAGE_PATH });
+	await context.storageState({ path: PATHS.SESSION_STORAGE });
 	await browser.close();
 }
