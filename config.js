@@ -1,7 +1,7 @@
 // Leave this empty to scrape all categories
 const CATEGORIES_TO_SCRAPE = [
-	'461147962869833728', // Electronics & Appliance > Household Electrical Appliances > Home Appliances
-	'461147343081705472', // Health & Recreation > Medicines, Health Products and Medical Devices
+	'461150146839711744', // Health & Recreation > Medicines, Health Products and Medical Devices > Reproductive health products and equipment
+	'597783888382763008', // Health & Recreation > Medicines, Health Products and Medical Devices > Silver Economy
 ];
 
 export default {
