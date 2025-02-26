@@ -47,7 +47,11 @@ npm start
 
 ## Configuration
 
-The scraper can be configured using the `./config.js` file. You can specify the categories to scrape by adding their IDs to the `CATEGORIES_TO_SCRAPE` array.
+The scraper can be configured using the `./config.js` file. You can
+
+-   specify the categories to scrape by adding their IDs to the `CATEGORIES_TO_SCRAPE` array
+-   optionally, leave the `CATEGORIES_TO_SCRAPE` array empty to scrape all categories
+-   enable/disable scraping exhibitor contact information by setting `SHOULD_SCRAPE_EXHIBITORS` to `true` or `false`
 
 ```javascript
 // Leave this empty to scrape all categories
@@ -58,5 +62,6 @@ const CATEGORIES_TO_SCRAPE = [
 
 export default {
 	CATEGORIES_TO_SCRAPE,
+	SHOULD_SCRAPE_EXHIBITORS: true,
 };
 ```
