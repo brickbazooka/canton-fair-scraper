@@ -66,7 +66,7 @@ async function logInToCantonFair() {
 	});
 
 	console.log('Resuming execution post login...');
-
+	await page.getByText('Got It', { exact: true }).click();
 	await context.storageState({ path: PATHS.SESSION_STORAGE });
 	await browser.close();
 }
