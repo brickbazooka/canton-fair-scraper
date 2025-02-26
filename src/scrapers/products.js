@@ -3,8 +3,82 @@ import path from 'path';
 
 import ExcelJS from 'exceljs';
 
+import config from '../../config.js';
 import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
+
+function getProductCategoriesToScrape() {
+	let productCategoryIds = [];
+	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
+
+	const categoriesToScrape = config.CATEGORIES_TO_SCRAPE || [];
+
+	for (const categoryIdToScrape of categoriesToScrape) {
+		const categoryToScrape = normalizedCategoriesData[categoryIdToScrape];
+
+		if (categoryToScrape.isProductCategory) {
+			productCategoryIds.push(categoryIdToScrape);
+			continue;
+		}
+
+		if (categoryToScrape.isSubCategory) {
+			for (const categoryId in normalizedCategoriesData) {
+				const category = normalizedCategoriesData[categoryId];
+				const categoryIsRequiredProductCategory =
+					category.isProductCategory && category.subCategoryId === categoryIdToScrape;
+				if (categoryIsRequiredProductCategory) {
+					productCategoryIds.push(category.id);
+				}
+			}
+			continue;
+		}
+
+		if (categoryToScrape.isMainCategory) {
+			for (const categoryId in normalizedCategoriesData) {
+				const category = normalizedCategoriesData[categoryId];
+				const categoryIsRequiredProductCategory =
+					category.isProductCategory && category.mainCategoryId === categoryIdToScrape;
+				if (categoryIsRequiredProductCategory) {
+					productCategoryIds.push(category.id);
+				}
+			}
+			continue;
+		}
+	}
+
+	/*
+	 ** We have to deal with duplicate product category additions in instances where
+	 ** CATEGORIES_TO_SCRAPE contains a product category, and a main/sub category that
+	 ** also contains the same product category.
+	 */
+	productCategoryIds = [...new Set(productCategoryIds)];
+
+	if (productCategoryIds.length === 0) {
+		console.log('No valid config found. Scraping all product categories...');
+		productCategoryIds = normalizedCategoriesData.productCategoryIds;
+	}
+
+	console.log(`Found ${productCategoryIds.length} product categories to scrape...`);
+	const filteredProductCategoryIds = productCategoryIds.filter((productCategoryId) => {
+		const productCategoryDataExists = fs.existsSync(
+			path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.xlsx`)
+		);
+		if (productCategoryDataExists) {
+			const productCategoryName = normalizedCategoriesData[productCategoryId].name;
+			console.log(
+				`- ${productCategoryId}.xlsx exists. Skipping the product scraping process for "${productCategoryName}".`
+			);
+		}
+		return !productCategoryDataExists;
+	});
+
+	return filteredProductCategoryIds.map((productCategoryId) => {
+		const productCategory = normalizedCategoriesData[productCategoryId];
+		productCategory.subCategory = normalizedCategoriesData[productCategory.subCategoryId];
+		productCategory.mainCategory = normalizedCategoriesData[productCategory.mainCategoryId];
+		return productCategory;
+	});
+}
 
 async function getTotalProductPages(page, itemsPerPage) {
 	const totalItemsText = await page.$eval('.index__total--hiD2n', (el) => el.textContent);
@@ -16,7 +90,7 @@ async function getTotalProductPages(page, itemsPerPage) {
 	return totalPages;
 }
 
-export async function extractProductsFromCategory(context, productCategory) {
+async function scrapeProductsFromCategory(context, productCategory) {
 	const {
 		name: productCategoryName,
 		id: productCategoryId,
@@ -25,7 +99,7 @@ export async function extractProductsFromCategory(context, productCategory) {
 	} = productCategory;
 
 	console.log('\n***\n');
-	console.log(`Extracting products from the product category "${productCategoryName} (ID: ${productCategoryId})"...`);
+	console.log(`Scraping products from the product category "${productCategoryName} (ID: ${productCategoryId})"...`);
 	console.log(
 		`Parent categories: ${mainCategoryName} (ID: ${mainCategoryId}) > ${subCategoryName} (ID: ${subCategoryId})`
 	);
@@ -49,7 +123,7 @@ export async function extractProductsFromCategory(context, productCategory) {
 	}
 
 	if (existingProductPagesCount === totalProductPages) {
-		console.log('- All products in this product category have already been extracted.');
+		console.log('- All products in this product category have already been scraped.');
 		return;
 	}
 
@@ -60,13 +134,13 @@ export async function extractProductsFromCategory(context, productCategory) {
 			await page.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
 		}
 		console.log(`- Fetching ~${maxProductsPerPage} products from page ${i} of ${totalProductPages}...`);
-		const extractedProducts = await extractProductsOnPage(context, page);
+		const scrapedProducts = await scrapeProductsOnPage(context, page);
 
-		appendToJSONArrFile(productCategoryDataPath, extractedProducts);
+		appendToJSONArrFile(productCategoryDataPath, scrapedProducts);
 	}
 }
 
-async function extractProductsOnPage(context, page) {
+async function scrapeProductsOnPage(context, page) {
 	const productCards = await page.locator('.index__ProductCard--LIttx').elementHandles();
 	const products = [];
 
@@ -104,36 +178,113 @@ async function extractProductsOnPage(context, page) {
 	return products.filter((product) => !product.isLocked);
 }
 
-export function writeProductsDataToExcelWorkbook({ workbook, worksheetName, productCategory, productsArray }) {
+export async function scrapeProducts(context) {
+	const productCategories = getProductCategoriesToScrape();
+
+	for (let i = 0, totalCategories = productCategories.length; i < totalCategories; i++) {
+		const categoryQuantityStr = productCategories.length - i === 1 ? 'category' : 'categories';
+
+		console.log(`${productCategories.length - i} product ${categoryQuantityStr} yet to scraped...`);
+		const productCategory = productCategories[i];
+
+		await scrapeProductsFromCategory(context, productCategory);
+
+		const outputDir = PATHS.PRODUCTS_DATA_DIR;
+		if (!fs.existsSync(outputDir)) {
+			fs.mkdirSync(outputDir);
+		}
+
+		const workbook = writeProductsDataToExcelWorkbook({
+			worksheetName: 'Products',
+			productCategory,
+			productsArray: JSON.parse(
+				fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategory.id}.json`), 'utf-8')
+			),
+			withExhibitorData: false,
+		});
+		const outputFilePath = path.join(outputDir, `${productCategory.id}.xlsx`);
+		await workbook.xlsx.writeFile(outputFilePath);
+		console.log(`Excel file created for the category "${productCategory.name}": ${outputFilePath}`);
+	}
+}
+
+function writeProductsDataToExcelWorkbook({
+	workbook,
+	worksheetName,
+	productCategory,
+	productsArray,
+	withExhibitorData,
+}) {
 	if (!workbook) {
 		workbook = new ExcelJS.Workbook();
 	}
 	const worksheet = workbook.addWorksheet(worksheetName);
 
-	worksheet.columns = [
-		{ header: `Product · ${productCategory.categoryPath}`, key: 'title', width: 80 },
-		{ header: 'Tags', key: 'tags', width: 120 },
-		{ header: 'Exhibitor', key: 'company', width: 60 },
-		{ header: 'Product URL', key: 'productURL', width: 90 },
-		{ header: 'Exhibitor URL', key: 'companyURL', width: 60 },
-		{ header: 'Product Image URL', key: 'imageURL', width: 100 },
-	];
+	let exhibitorsInfo = {};
+	if (withExhibitorData) {
+		worksheet.columns = [
+			{ header: `Product · ${productCategory.categoryPath}`, key: 'title', width: 80 },
+			{ header: 'Tags', key: 'tags', width: 120 },
+			{ header: 'Exhibitor', key: 'exhibitor', width: 60 },
+			{ header: 'Product URL', key: 'productURL', width: 90 },
+			{ header: 'Exhibitor · Contact', key: 'exhibitorPerson', width: 24 },
+			{ header: 'Exhibitor · Mobile Phone', key: 'exhibitorMobile', width: 24 },
+			{ header: 'Exhibitor · Email', key: 'exhibitorEmail', width: 40 },
+			{ header: 'Exhibitor · Telephone', key: 'exhibitorTelephone', width: 24 },
+			{ header: 'Exhibitor · Fax', key: 'exhibitorFax', width: 24 },
+			{ header: 'Exhibitor · Website', key: 'exhibitorWebsite', width: 60 },
+			{ header: 'Exhibitor Shop URL', key: 'exhibitorShopURL', width: 60 },
+			{ header: 'Product Image', key: 'productImageURL', width: 100 },
+		];
+		exhibitorsInfo = JSON.parse(fs.readFileSync(PATHS.EXHIBITORS_JSON, 'utf-8'));
+	} else {
+		worksheet.columns = [
+			{ header: `Product · ${productCategory.categoryPath}`, key: 'title', width: 80 },
+			{ header: 'Tags', key: 'tags', width: 120 },
+			{ header: 'Exhibitor', key: 'exhibitor', width: 60 },
+			{ header: 'Product URL', key: 'productURL', width: 90 },
+			{ header: 'Exhibitor Shop URL', key: 'exhibitorShopURL', width: 60 },
+			{ header: 'Product Image', key: 'productImageURL', width: 100 },
+		];
+	}
 
 	const uniqueProducts = new Set(productsArray.flat().map((product) => JSON.stringify(product)));
+
+	const isURL = (str) => /^(https|http|www|\.com|\.cn)/.test(str);
 
 	uniqueProducts.forEach((productStr) => {
 		const product = JSON.parse(productStr);
 		const productURL = product.productURL.replace('?search=', '');
 		const companyURL = product.companyLink.replace('?keyword=#/', '').replace('/en-US/', CANTON_FAIR_URL);
-		const imageURL = product.image.includes('https://') ? product.image.split('?')[0] : '';
-		worksheet.addRow({
-			title: product.title,
-			tags: product.tags.join(', '),
-			company: product.company,
-			productURL: { text: productURL, hyperlink: productURL },
-			companyURL: { text: companyURL, hyperlink: companyURL },
-			imageURL: imageURL ? { text: imageURL, hyperlink: imageURL } : '',
-		});
+		const productImageURL = isURL(product.image) ? product.image.split('?')[0] : '';
+		if (withExhibitorData) {
+			const exhibitorId = product.companyLink.replace('?keyword=#/', '').replace('/en-US/shops/', '');
+			const exhibitor = exhibitorsInfo[exhibitorId];
+
+			worksheet.addRow({
+				title: product.title,
+				tags: product.tags.join(', '),
+				exhibitor: product.company,
+				productURL: { text: productURL, hyperlink: productURL },
+				exhibitorPerson: exhibitor.contactPerson,
+				exhibitorMobile: exhibitor.mobilePhone,
+				exhibitorEmail: exhibitor.email,
+				exhibitorTelephone: exhibitor.telephone,
+				exhibitorFax: exhibitor.fax,
+				exhibitorWebsite: exhibitor.website,
+				exhibitorShopURL: { text: companyURL, hyperlink: companyURL },
+				productImageURL: productImageURL ? { text: productImageURL, hyperlink: productImageURL } : '',
+			});
+		} else {
+			worksheet.addRow({
+				title: product.title,
+				tags: product.tags.join(', '),
+				exhibitor: product.company,
+				productURL: { text: productURL, hyperlink: productURL },
+				exhibitorShopURL: { text: companyURL, hyperlink: companyURL },
+				productImageURL: productImageURL ? { text: productImageURL, hyperlink: productImageURL } : '',
+			});
+		}
 	});
 
 	// Make the header row sticky
@@ -146,10 +297,10 @@ export function writeProductsDataToExcelWorkbook({ workbook, worksheetName, prod
 		cell.alignment = { vertical: 'middle', horizontal: 'center' };
 		cell.protection = { locked: true };
 	});
-	worksheet.autoFilter = { from: 'A1', to: 'F1' };
+	worksheet.autoFilter = withExhibitorData ? { from: 'A1', to: 'L1' } : { from: 'A1', to: 'F1' };
 
 	// Stylize the URL columns
-	['productURL', 'companyURL', 'imageURL'].forEach((column) => {
+	['productURL', 'exhibitorShopURL', 'productImageURL'].forEach((column) => {
 		worksheet.getColumn(column).eachCell((cell, rowNumber) => {
 			// Skip the header row
 			if (rowNumber === 1) {
@@ -162,7 +313,7 @@ export function writeProductsDataToExcelWorkbook({ workbook, worksheetName, prod
 	return workbook;
 }
 
-export function curateAllProductsDataInExcel() {
+export function curateAllProductsDataInExcel(options = { withExhibitorData: true }) {
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
 
 	let workbook = new ExcelJS.Workbook();
@@ -191,6 +342,7 @@ export function curateAllProductsDataInExcel() {
 			worksheetName: `CID_${productCategoryId}`,
 			productCategory,
 			productsArray,
+			withExhibitorData: options.withExhibitorData,
 		});
 	}
 
@@ -249,7 +401,9 @@ export function curateAllProductsDataInExcel() {
 
 	console.log('\n***\n');
 	console.log(
-		`Creating an Excel file for all the available ${productFiles.length} product categories at ${PATHS.CURATED_PRODUCTS_XLSX} ...`
+		`Creating an Excel file for all the available ${productFiles.length} product categories,${
+			options.withExhibitorData ? ' with exhibitor data, ' : ' '
+		}at ${PATHS.CURATED_PRODUCTS_XLSX} ...`
 	);
 	workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
 }

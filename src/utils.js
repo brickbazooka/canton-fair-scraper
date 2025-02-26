@@ -16,6 +16,21 @@ export function appendToJSONArrFile(filePath, data) {
 	fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
 }
 
+export function appendToJSONObjFile(filePath, data) {
+	const dir = path.dirname(filePath);
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir, { recursive: true });
+	}
+
+	let existingData = {};
+	if (fs.existsSync(filePath)) {
+		const fileContent = fs.readFileSync(filePath, 'utf-8');
+		existingData = JSON.parse(fileContent);
+	}
+	existingData = { ...existingData, ...data };
+	fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
+}
+
 export function getTimeDifference(startTime, endTime) {
 	const timeDifference = endTime - startTime;
 	const hours = Math.floor(timeDifference / 3600000);
@@ -42,4 +57,11 @@ export function withTimer(fn) {
 
 		return result;
 	};
+}
+
+export function logScrapingError(error, type) {
+	const pluralizedType = type === 'category' ? 'categories' : `${type}s`;
+	console.log('\n***\n');
+	console.error(`An error occurred while scraping ${pluralizedType}:`, error);
+	console.log('\n***\n');
 }

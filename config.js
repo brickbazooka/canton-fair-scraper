@@ -6,4 +6,5 @@ const CATEGORIES_TO_SCRAPE = [
 
 export default {
 	CATEGORIES_TO_SCRAPE,
+	SHOULD_SCRAPE_EXHIBITORS: true,
 };

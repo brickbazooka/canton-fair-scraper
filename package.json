@@ -4,7 +4,7 @@
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
-		"start": "clear && node src/index.js",
+		"start": "node -e \"(async () => { process.platform === 'win32' ? console.clear() : console.log('\\033c'); await import('./src/index.js'); })()\"",
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"postinstall": "npx playwright install"
 	},

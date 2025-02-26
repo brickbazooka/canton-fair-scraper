@@ -16,9 +16,11 @@ export const STANDARD_TIMEOUT = {
 const SCRAPED_DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../data');
 
 export const PATHS = {
+	SCRAPED_DATA_DIR,
 	SESSION_STORAGE: path.join(SCRAPED_DATA_DIR, 'canton_fair_session.json'),
 	CATEGORIES_JSON: path.join(SCRAPED_DATA_DIR, 'categories.json'),
 	NORMALIZED_CATEGORIES_JSON: path.join(SCRAPED_DATA_DIR, 'normalized_categories.json'),
 	PRODUCTS_DATA_DIR: path.join(SCRAPED_DATA_DIR, 'products'),
+	EXHIBITORS_JSON: path.join(SCRAPED_DATA_DIR, 'exhibitors.json'),
 	CURATED_PRODUCTS_XLSX: path.join(SCRAPED_DATA_DIR, 'curated.xlsx'),
 };

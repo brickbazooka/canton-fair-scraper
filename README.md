@@ -5,9 +5,9 @@ A scraper for extracting product and category information from the (2025) [Canto
 It
 
 -   logs in to the Canton Fair website, based on the provided credentials.
--   extracts the main categories, subcategories, and product categories.
--   extracts product details (for specific/all categories) including images, tags, exhibitor information, and product URLs.
--   generates Excel files from the extracted product data, for each product category.
+-   scrapes the main categories, subcategories, and product categories.
+-   scrapes product details (for specific/all categories) including images, tags, exhibitor information, and product URLs.
+-   generates Excel files from the scraped product data, for each product category.
 
 ## Usage
 

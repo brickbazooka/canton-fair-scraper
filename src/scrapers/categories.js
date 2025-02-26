@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
 
@@ -10,7 +12,7 @@ function extractCategoryIdsFromURL(url) {
 	};
 }
 
-export async function extractMainCategories(page) {
+async function scrapeMainCategories(page) {
 	const categories = await page.evaluate(() => {
 		return Array.from(document.querySelectorAll('.page__item--X870u .kylin-text__text')).map((el) =>
 			el.textContent.trim()
@@ -20,7 +22,7 @@ export async function extractMainCategories(page) {
 	return categories;
 }
 
-export async function navigateToMainCategoryPage(page, context, category) {
+async function navigateToMainCategoryPage(page, context, category) {
 	const { name: categoryName, index: categoryIndex } = category;
 
 	const categorySelector = `.page__item--X870u:nth-of-type(${categoryIndex + 1})`;
@@ -36,7 +38,7 @@ export async function navigateToMainCategoryPage(page, context, category) {
 	return { categoryPage, categoryId, categoryName };
 }
 
-export async function extractSubCategories({ categoryId, categoryName, categoryPage }) {
+async function scrapeSubCategories({ categoryId, categoryName, categoryPage }) {
 	const pageCategories = await categoryPage.$$eval('.index__Collapse--RUAbD[id]', (nodes) => {
 		return nodes.map((node) => {
 			const titleText = node.querySelector('.index__text--lKhSS')?.textContent.trim() || '';
@@ -70,8 +72,9 @@ export async function extractSubCategories({ categoryId, categoryName, categoryP
 
 	for (const category of pageCategories) {
 		console.log('\n');
+		const categoryQuantityStr = category.subCategories.length === 1 ? 'category' : 'categories';
 		console.log(
-			`Processing the ${category.subCategories.length} product categories of "${category.name}" (COUNT: ${category.count} | ID: ${category.id})...`
+			`Processing the ${category.subCategories.length} product ${categoryQuantityStr} of "${category.name}" (COUNT: ${category.count} | ID: ${category.id})...`
 		);
 
 		// Click the category to expand the list of subcategories, and wait for the category to expand
@@ -81,7 +84,7 @@ export async function extractSubCategories({ categoryId, categoryName, categoryP
 
 		let currentURL = await categoryPage.url();
 		for (const subCategory of category.subCategories) {
-			console.log(`- Fetching meta for the product category: ${subCategory.name} (${subCategory.count})...`);
+			console.log(`- Scraping meta for the product category: ${subCategory.name} (${subCategory.count})...`);
 
 			// Click the subcategory and wait for the page to load (and the URL to change)
 			const subCategoryElement = await categoryPage
@@ -108,7 +111,47 @@ export async function extractSubCategories({ categoryId, categoryName, categoryP
 	return pageCategories;
 }
 
-export function normalizeCategoriesData(categoriesData) {
+export async function scrapeCategories(context, page) {
+	const categories = await scrapeMainCategories(page);
+
+	let existingCategories = [];
+	if (fs.existsSync(PATHS.CATEGORIES_JSON)) {
+		existingCategories = JSON.parse(fs.readFileSync(PATHS.CATEGORIES_JSON, 'utf-8'));
+	}
+
+	for (let i = 0, totalCategories = categories.length; i < totalCategories; i++) {
+		const categoryExists = existingCategories.some((category) => category.name === categories[i]);
+		if (categoryExists) {
+			console.log('\n***\n');
+			console.log(`Category "${categories[i]}" has already been scraped. Skipping...`);
+			continue;
+		}
+
+		const { categoryPage, categoryId, categoryName } = await navigateToMainCategoryPage(page, context, {
+			name: categories[i],
+			index: i,
+		});
+		await categoryPage.waitForTimeout(STANDARD_TIMEOUT.XL_MS);
+		await scrapeSubCategories({ categoryId, categoryName, categoryPage });
+
+		await categoryPage.close();
+	}
+
+	const categoriesData = fs.readFileSync(PATHS.CATEGORIES_JSON, 'utf-8');
+	const normalizedCategoriesData = normalizeCategoriesData(JSON.parse(categoriesData));
+	fs.writeFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, JSON.stringify(normalizedCategoriesData, null, 2));
+}
+
+export function shouldSkipCategoryScraping() {
+	if (fs.existsSync(PATHS.NORMALIZED_CATEGORIES_JSON)) {
+		console.log('\n***\n');
+		console.log("Normalized categories' data already exists. Skipping the category scraping process.");
+		return true;
+	}
+	return false;
+}
+
+function normalizeCategoriesData(categoriesData) {
 	console.log('\n***\n');
 	console.log('Normalizing categories data...');
 	function objectifyCategoryStr(categoryStr) {

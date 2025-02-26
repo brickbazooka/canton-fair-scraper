@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { chromium } from 'playwright';
 import readline from 'readline';
 
@@ -8,7 +10,7 @@ dotenv.config();
 
 const { CANTON_FAIR_USERTYPE, CANTON_FAIR_USERNAME, CANTON_FAIR_EMAIL, CANTON_FAIR_PASSWORD } = process.env;
 
-export async function isLoggedIn(page) {
+async function isLoggedIn(page) {
 	try {
 		await page.waitForSelector('.index__name--Whtb3', { timeout: STANDARD_TIMEOUT.XM_MS });
 		const userName = await page.evaluate(() =>
@@ -20,7 +22,7 @@ export async function isLoggedIn(page) {
 	}
 }
 
-export async function logInToCantonFair() {
+async function logInToCantonFair() {
 	const browser = await chromium.launch({ headless: false });
 	const context = await browser.newContext();
 	const page = await context.newPage();
@@ -57,15 +59,53 @@ export async function logInToCantonFair() {
 	});
 
 	await new Promise((resolve) => {
-		rl.question('After login, wait until you see the "Got It" button, then press the ENTER key to resume.', () => {
+		rl.question('After a confirmation of successful login, press Enter to resume execution...', () => {
 			rl.close();
 			resolve();
 		});
 	});
 
 	console.log('Resuming execution post login...');
-	await page.getByText('Got It', { exact: true }).click();
 
 	await context.storageState({ path: PATHS.SESSION_STORAGE });
 	await browser.close();
+}
+
+export async function loginSequence(options = { headless: true }) {
+	const { headless } = options;
+	const browser = await chromium.launch({ headless });
+	let context;
+
+	console.log('\n***\n');
+	if (fs.existsSync(PATHS.SESSION_STORAGE)) {
+		console.log('Launched a new browser. Loading existing session...');
+		context = await browser.newContext({ storageState: PATHS.SESSION_STORAGE });
+	} else {
+		console.log('Launched a new browser. No saved session found. Creating a new session...');
+		context = await browser.newContext();
+	}
+
+	const page = await context.newPage();
+
+	await page.goto(CANTON_FAIR_URL);
+	await page.waitForLoadState('domcontentloaded');
+
+	if (!(await isLoggedIn(page))) {
+		console.log('Not logged in. Instantiating the login process in a new browser...');
+
+		/*
+		 ** Since the login process requires manual CAPTCHA solving, we have no other choice but to do the login process in a non-headless (visible) browser.
+		 ** However, we can still choose to execute the scraping process in a headless (non-visible) browser.
+		 **
+		 ** And that is the reason behind closing the browser here, and then reopening it below (by calling loginSequence() again with a "logged in" session).
+		 ** It's done to retain the choice of executing the scraping process in a headless/non-headless browser, irrespective of the login process.
+		 **
+		 */
+		await browser.close();
+		await logInToCantonFair();
+		console.log('Logged in successfully. Reopening a new browser...');
+		return loginSequence();
+	}
+
+	return { browser, context, page };
 }
