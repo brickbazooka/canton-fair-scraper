@@ -3,7 +3,7 @@ import fs from 'fs';
 import { chromium } from 'playwright';
 import readline from 'readline';
 
-import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
+import { CANTON_FAIR_URL, CANTON_FAIR_LOGIN_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -27,10 +27,7 @@ async function logInToCantonFair() {
 	const context = await browser.newContext();
 	const page = await context.newPage();
 
-	await page.goto(CANTON_FAIR_URL);
-	await page.waitForLoadState('domcontentloaded');
-
-	await page.getByText('Login', { exact: true }).click();
+	await page.goto(CANTON_FAIR_LOGIN_URL);
 	await page.waitForLoadState('load');
 
 	await page.getByText(CANTON_FAIR_USERTYPE, { exact: true }).click();
