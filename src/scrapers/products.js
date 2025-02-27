@@ -184,7 +184,7 @@ export async function scrapeProducts(context) {
 	for (let i = 0, totalCategories = productCategories.length; i < totalCategories; i++) {
 		const categoryQuantityStr = productCategories.length - i === 1 ? 'category' : 'categories';
 
-		console.log(`${productCategories.length - i} product ${categoryQuantityStr} yet to scraped...`);
+		console.log(`${productCategories.length - i} product ${categoryQuantityStr} yet to be scraped...`);
 		const productCategory = productCategories[i];
 
 		await scrapeProductsFromCategory(context, productCategory);
