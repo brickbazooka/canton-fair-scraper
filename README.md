@@ -33,10 +33,10 @@ cp .env.example .env
 Edit the `.env` file and fill in your credentials:
 
 ```
-CANTON_FAIR_USERTYPE='Overseas Buyer / Purchasing Agent'
-CANTON_FAIR_USERNAME='your-canton-fair-username'
-CANTON_FAIR_EMAIL='your-canton-fair-email'
-CANTON_FAIR_PASSWORD='your-canton-fair-password'
+CANTON_FAIR_USERTYPE="Overseas Buyer / Purchasing Agent"
+CANTON_FAIR_USERNAME="EXAMPLE USERNAME"
+CANTON_FAIR_EMAIL="example@gmail.com"
+CANTON_FAIR_PASSWORD="example_password"
 ```
 
 4. Start the scraper:
