@@ -7,76 +7,64 @@ import { scrapeExhibitors } from './scrapers/exhibitors.js';
 
 import { withTimer, logScrapingError } from './utils.js';
 
-async function categoryScrapingSequence(options = { headless: true }) {
-	if (shouldSkipCategoryScraping()) {
-		return { error: null, browser: null };
+async function scrapingSequence(scrapingTargetType, options) {
+	let scrapeFunc;
+	switch (scrapingTargetType) {
+		case 'category':
+			if (shouldSkipCategoryScraping()) {
+				return { error: null, browser: null };
+			}
+			scrapeFunc = scrapeCategories;
+			break;
+		case 'product':
+			scrapeFunc = scrapeProducts;
+			break;
+		case 'exhibitor':
+			scrapeFunc = scrapeExhibitors;
+			break;
+		default:
+			const errorMessage = `Invalid scraping target type: ${scrapingTargetType}`;
+			console.error(errorMessage);
+			return { error: new Error(errorMessage), browser: null };
 	}
 
 	const { browser, context, page } = await loginSequence(options);
 
 	try {
-		await scrapeCategories(context, page);
+		await scrapeFunc(context, page);
 
 		await browser.close();
 		return { error: null, browser: null };
 	} catch (error) {
-		logScrapingError(error, 'category');
+		logScrapingError(error, scrapingTargetType);
 		return { error, browser };
 	}
 }
 
-async function productScrapingSequence(options = { headless: true }) {
-	const { browser, context } = await loginSequence(options);
-
-	try {
-		await scrapeProducts(context);
-
-		await browser.close();
-		return { error: null, browser: null };
-	} catch (error) {
-		logScrapingError(error, 'product');
-		return { error, browser };
-	}
-}
-
-async function exhibitorScrapingSequence(options = { headless: true }) {
-	const { browser, context } = await loginSequence(options);
-
-	try {
-		await scrapeExhibitors(context);
-
-		await browser.close();
-		return { error: null, browser: null };
-	} catch (error) {
-		logScrapingError(error, 'exhibitor');
-		return { error, browser };
-	}
-}
-
-async function errorTolerantScrapingSequence(scrapingSequenceFunc, type, options) {
+async function errorTolerantScrapingSequence(scrapingTargetType, options) {
 	if (options.logMessage) {
 		console.log(options.logMessage);
 	}
 
-	const { error, browser } = await scrapingSequenceFunc(options);
+	const { error, browser } = await scrapingSequence(scrapingTargetType, options);
 
 	if (error) {
 		console.log('Closing the browser...');
 		await browser.close();
-		await errorTolerantScrapingSequence(scrapingSequenceFunc, type, {
+		await errorTolerantScrapingSequence(scrapingTargetType, {
 			...options,
-			logMessage: `Retrying ${type} scraping sequence...`,
+			logMessage: `Retrying ${scrapingTargetType} scraping sequence...`,
 		});
 	}
 }
 
 async function runScrapingSequence() {
-	await errorTolerantScrapingSequence(categoryScrapingSequence, 'category', { headless: true });
+	await errorTolerantScrapingSequence('category', { headless: true });
 
-	await errorTolerantScrapingSequence(productScrapingSequence, 'product', { headless: true });
+	await errorTolerantScrapingSequence('product', { headless: true });
 
 	if (config.SHOULD_SCRAPE_EXHIBITORS) {
-		await errorTolerantScrapingSequence(exhibitorScrapingSequence, 'exhibitor', { headless: true });
+		await errorTolerantScrapingSequence('exhibitor', { headless: true });
 	}
 
 	curateAllProductsDataInExcel({ withExhibitorData: config.SHOULD_SCRAPE_EXHIBITORS });

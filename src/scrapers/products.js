@@ -58,19 +58,17 @@ function getProductCategoriesToScrape() {
 		productCategoryIds = normalizedCategoriesData.productCategoryIds;
 	}
 
-	console.log(`Found ${productCategoryIds.length} product categories to scrape...`);
 	const filteredProductCategoryIds = productCategoryIds.filter((productCategoryId) => {
 		const productCategoryDataExists = fs.existsSync(
 			path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.xlsx`)
 		);
-		if (productCategoryDataExists) {
-			const productCategoryName = normalizedCategoriesData[productCategoryId].name;
-			console.log(
-				`- ${productCategoryId}.xlsx exists. Skipping the product scraping process for "${productCategoryName}".`
-			);
-		}
 		return !productCategoryDataExists;
 	});
+	console.log(
+		`${productCategoryIds.length - filteredProductCategoryIds.length} (out of ${
+			productCategoryIds.length
+		}) product categories have already been scraped.`
+	);
 
 	return filteredProductCategoryIds.map((productCategoryId) => {
 		const productCategory = normalizedCategoriesData[productCategoryId];
@@ -87,7 +85,7 @@ async function getTotalProductPages(page, itemsPerPage) {
 	const totalPages = Math.ceil(totalItems / itemsPerPage);
 
 	console.log(`Total items: ${totalItems}, Total pages: ${totalPages}`);
-	return totalPages;
+	return { totalProductCategoryItems: totalItems, totalProductCategoryPages: totalPages };
 }
 
 async function scrapeProductsFromCategory(context, productCategory) {
@@ -113,7 +111,10 @@ async function scrapeProductsFromCategory(context, productCategory) {
 
 	await page.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
 
-	const totalProductPages = await getTotalProductPages(page, maxProductsPerPage);
+	const { totalProductCategoryItems, totalProductCategoryPages } = await getTotalProductPages(
+		page,
+		maxProductsPerPage
+	);
 
 	let existingProductPagesCount = 0;
 	const productCategoryDataPath = path.join(PATHS.PRODUCTS_DATA_DIR, `${productCategoryId}.json`);
@@ -122,18 +123,25 @@ async function scrapeProductsFromCategory(context, productCategory) {
 		existingProductPagesCount = existingProductPages.length;
 	}
 
-	if (existingProductPagesCount === totalProductPages) {
+	if (existingProductPagesCount === totalProductCategoryPages) {
 		console.log('- All products in this product category have already been scraped.');
 		return;
 	}
 
-	for (let i = existingProductPagesCount + 1; i <= totalProductPages; i++) {
+	let totalProductsInPage = maxProductsPerPage;
+	for (let i = existingProductPagesCount + 1; i <= totalProductCategoryPages; i++) {
 		if (i > 1) {
 			await page.goto(`${url}&page=${i}`);
 			await page.waitForLoadState('load');
 			await page.waitForTimeout(STANDARD_TIMEOUT.XM_MS);
 		}
-		console.log(`- Fetching ~${maxProductsPerPage} products from page ${i} of ${totalProductPages}...`);
+
+		if (i === totalProductCategoryPages) {
+			totalProductsInPage = totalProductCategoryItems % maxProductsPerPage;
+		}
+
+		console.log(`- Fetching ~${totalProductsInPage} products from page ${i} of ${totalProductCategoryPages}...`);
+
 		const scrapedProducts = await scrapeProductsOnPage(context, page);
 
 		appendToJSONArrFile(productCategoryDataPath, scrapedProducts);
@@ -223,12 +231,12 @@ function writeProductsDataToExcelWorkbook({
 	let exhibitorsInfo = {};
 	if (withExhibitorData) {
 		worksheet.columns = [
-			{ header: `Product · ${productCategory.categoryPath}`, key: 'title', width: 80 },
+			{ header: `Product · ${productCategory.name}`, key: 'title', width: 80 },
 			{ header: 'Tags', key: 'tags', width: 120 },
 			{ header: 'Exhibitor', key: 'exhibitor', width: 60 },
 			{ header: 'Product URL', key: 'productURL', width: 90 },
 			{ header: 'Exhibitor · Contact', key: 'exhibitorPerson', width: 24 },
-			{ header: 'Exhibitor · Mobile Phone', key: 'exhibitorMobile', width: 24 },
+			{ header: 'Exhibitor · Mobile', key: 'exhibitorMobile', width: 24 },
 			{ header: 'Exhibitor · Email', key: 'exhibitorEmail', width: 40 },
 			{ header: 'Exhibitor · Telephone', key: 'exhibitorTelephone', width: 24 },
 			{ header: 'Exhibitor · Fax', key: 'exhibitorFax', width: 24 },
@@ -239,7 +247,7 @@ function writeProductsDataToExcelWorkbook({
 		exhibitorsInfo = JSON.parse(fs.readFileSync(PATHS.EXHIBITORS_JSON, 'utf-8'));
 	} else {
 		worksheet.columns = [
-			{ header: `Product · ${productCategory.categoryPath}`, key: 'title', width: 80 },
+			{ header: `Product · ${productCategory.name}`, key: 'title', width: 80 },
 			{ header: 'Tags', key: 'tags', width: 120 },
 			{ header: 'Exhibitor', key: 'exhibitor', width: 60 },
 			{ header: 'Product URL', key: 'productURL', width: 90 },

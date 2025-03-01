@@ -48,29 +48,40 @@ async function scrapeExhibitorContacts(context, exhibitorURL) {
 export async function scrapeExhibitors(context) {
 	const exhibitors = getExhibitorsToScrape();
 
-	let counter = 0;
 	const totalExhibitors = Object.keys(exhibitors).length;
 
-	console.log(`\n***\n`);
-	console.log(`Scraping ${totalExhibitors} exhibitors...`);
+	console.log(`Scraping exhibitors...`);
 
 	let existingExhibitors = {};
 	if (fs.existsSync(PATHS.EXHIBITORS_JSON)) {
 		existingExhibitors = JSON.parse(fs.readFileSync(PATHS.EXHIBITORS_JSON, 'utf-8'));
 	}
 
-	for (const exhibitorId in exhibitors) {
-		if (existingExhibitors[exhibitorId]) {
-			continue;
-		}
+	const filteredExhibitorIds = Object.keys(exhibitors).filter((exhibitorId) => !existingExhibitors[exhibitorId]);
+	const remainingExhibitors = filteredExhibitorIds.length;
+
+	if (remainingExhibitors === 0) {
+		console.log(`All ${totalExhibitors} exhibitors have already been scraped.`);
+		return;
+	}
+
+	console.log(
+		`${totalExhibitors - remainingExhibitors} (out of ${totalExhibitors}) exhibitors have already been scraped.`
+	);
+	console.log(`${remainingExhibitors} exhibitors yet to be scraped...`);
+
+	let counter = 0;
+	for (const exhibitorId of filteredExhibitorIds) {
 		const exhibitorURL = exhibitors[exhibitorId];
 		const companyContactDetails = await scrapeExhibitorContacts(context, exhibitorURL);
 		appendToJSONObjFile(PATHS.EXHIBITORS_JSON, {
 			[exhibitorId]: companyContactDetails,
 		});
-		console.log(`- Processed ${++counter}/${totalExhibitors} exhibitors.`);
+		counter++;
+		console.log(`- Processed ${counter}/${remainingExhibitors} exhibitor${counter === 1 ? '' : 's'}.`);
 	}
-	console.log(`All ${totalExhibitors} exhibitors have${counter === 0 ? ' already ' : ' '}been scraped.`);
+
+	console.log(`All ${totalExhibitors} exhibitors have been scraped.`);
 }
 
 function getExhibitorsToScrape() {
