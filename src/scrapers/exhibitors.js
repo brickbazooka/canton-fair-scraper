@@ -5,6 +5,16 @@ import { CANTON_FAIR_URL, PATHS } from '../constants.js';
 
 import { appendToJSONObjFile } from '../utils.js';
 
+export function shouldSkipExhibitorScraping() {
+	const exhibitorsToScrape = getExhibitorsToScrape({ logInfo: false });
+	const skipExhibitorScraping = exhibitorsToScrape.length === 0;
+	if (skipExhibitorScraping) {
+		console.log('\n***\n');
+		console.log("All exhibitors' data has already been scraped. Skipping the exhibitor scraping process.");
+	}
+	return skipExhibitorScraping;
+}
+
 async function scrapeExhibitorContacts(context, exhibitorURL) {
 	const page = await context.newPage();
 	await page.goto(exhibitorURL);
@@ -48,46 +58,26 @@ async function scrapeExhibitorContacts(context, exhibitorURL) {
 export async function scrapeExhibitors(context) {
 	const exhibitors = getExhibitorsToScrape();
 
-	const totalExhibitors = Object.keys(exhibitors).length;
-
-	console.log(`Scraping exhibitors...`);
-
-	let existingExhibitors = {};
-	if (fs.existsSync(PATHS.EXHIBITORS_JSON)) {
-		existingExhibitors = JSON.parse(fs.readFileSync(PATHS.EXHIBITORS_JSON, 'utf-8'));
-	}
-
-	const filteredExhibitorIds = Object.keys(exhibitors).filter((exhibitorId) => !existingExhibitors[exhibitorId]);
-	const remainingExhibitors = filteredExhibitorIds.length;
-
-	if (remainingExhibitors === 0) {
-		console.log(`All ${totalExhibitors} exhibitors have already been scraped.`);
-		return;
-	}
-
-	console.log(
-		`${totalExhibitors - remainingExhibitors} (out of ${totalExhibitors}) exhibitors have already been scraped.`
-	);
-	console.log(`${remainingExhibitors} exhibitors yet to be scraped...`);
-
 	let counter = 0;
-	for (const exhibitorId of filteredExhibitorIds) {
-		const exhibitorURL = exhibitors[exhibitorId];
+	for (const exhibitor of exhibitors) {
+		const { exhibitorId, exhibitorURL } = exhibitor;
 		const companyContactDetails = await scrapeExhibitorContacts(context, exhibitorURL);
 		appendToJSONObjFile(PATHS.EXHIBITORS_JSON, {
 			[exhibitorId]: companyContactDetails,
 		});
 		counter++;
-		console.log(`- Processed ${counter}/${remainingExhibitors} exhibitor${counter === 1 ? '' : 's'}.`);
+		console.log(`- Scraped ${counter}/${remainingExhibitors} exhibitor${counter === 1 ? '' : 's'}.`);
 	}
 
-	console.log(`All ${totalExhibitors} exhibitors have been scraped.`);
+	console.log('All exhibitors have been scraped.');
 }
 
-function getExhibitorsToScrape() {
+function getExhibitorsToScrape(options = { logInfo: true }) {
+	const { logInfo } = options;
+
 	let productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => file.endsWith('.json'));
 
-	const exhibitors = {};
+	const uniqueExhibitors = {};
 	productFiles
 		.map((productFile) => {
 			const productsArray = JSON.parse(fs.readFileSync(path.join(PATHS.PRODUCTS_DATA_DIR, productFile), 'utf-8'));
@@ -97,8 +87,35 @@ function getExhibitorsToScrape() {
 		.flat()
 		.forEach((product) => {
 			const exhibitorId = product.companyLink.replace('?keyword=#/', '').replace('/en-US/shops/', '');
-			exhibitors[exhibitorId] = `${product.companyLink.replace('/en-US/', CANTON_FAIR_URL)}contact`;
+			const exhibitorURL = `${product.companyLink.replace('/en-US/', CANTON_FAIR_URL)}contact`;
+			uniqueExhibitors[exhibitorId] = { exhibitorId, exhibitorURL };
 		});
+	const allExhibitors = Object.values(uniqueExhibitors);
 
-	return exhibitors;
+	const totalExhibitors = allExhibitors.length;
+
+	let existingExhibitors = {};
+	if (fs.existsSync(PATHS.EXHIBITORS_JSON)) {
+		existingExhibitors = JSON.parse(fs.readFileSync(PATHS.EXHIBITORS_JSON, 'utf-8'));
+	}
+
+	const filteredExhibitors = allExhibitors.filter((exhibitor) => !existingExhibitors[exhibitor.exhibitorId]);
+
+	const remainingExhibitors = filteredExhibitors.length;
+
+	if (remainingExhibitors === 0) {
+		if (logInfo) {
+			console.log(`All ${totalExhibitors} exhibitors have already been scraped.`);
+		}
+		return filteredExhibitors;
+	}
+
+	if (logInfo) {
+		console.log(
+			`${totalExhibitors - remainingExhibitors} (out of ${totalExhibitors}) exhibitors have already been scraped.`
+		);
+		console.log(`${remainingExhibitors} exhibitors yet to be scraped...`);
+	}
+
+	return filteredExhibitors;
 }

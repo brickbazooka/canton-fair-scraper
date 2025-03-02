@@ -3,6 +3,15 @@ import fs from 'fs';
 import { STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
 
+export function shouldSkipCategoryScraping() {
+	const skipCategoryScraping = fs.existsSync(PATHS.NORMALIZED_CATEGORIES_JSON);
+	if (skipCategoryScraping) {
+		console.log('\n***\n');
+		console.log("Normalized categories' data already exists. Skipping the category scraping process.");
+	}
+	return skipCategoryScraping;
+}
+
 function extractCategoryIdsFromURL(url) {
 	const categoryMatch = url.match(/category=([0-9]+)/);
 	const subCategoryMatch = url.match(/scategory=([0-9]+)/);
@@ -140,15 +149,6 @@ export async function scrapeCategories(context, page) {
 	const categoriesData = fs.readFileSync(PATHS.CATEGORIES_JSON, 'utf-8');
 	const normalizedCategoriesData = normalizeCategoriesData(JSON.parse(categoriesData));
 	fs.writeFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, JSON.stringify(normalizedCategoriesData, null, 2));
-}
-
-export function shouldSkipCategoryScraping() {
-	if (fs.existsSync(PATHS.NORMALIZED_CATEGORIES_JSON)) {
-		console.log('\n***\n');
-		console.log("Normalized categories' data already exists. Skipping the category scraping process.");
-		return true;
-	}
-	return false;
 }
 
 function normalizeCategoriesData(categoriesData) {

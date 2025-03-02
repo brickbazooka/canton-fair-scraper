@@ -2,30 +2,31 @@ import config from '../config.js';
 
 import { loginSequence } from './scrapers/auth.js';
 import { scrapeCategories, shouldSkipCategoryScraping } from './scrapers/categories.js';
-import { scrapeProducts, curateAllProductsDataInExcel } from './scrapers/products.js';
-import { scrapeExhibitors } from './scrapers/exhibitors.js';
+import { scrapeProducts, shouldSkipProductScraping, curateAllProductsDataInExcel } from './scrapers/products.js';
+import { scrapeExhibitors, shouldSkipExhibitorScraping } from './scrapers/exhibitors.js';
 
 import { withTimer, logScrapingError } from './utils.js';
 
 async function scrapingSequence(scrapingTargetType, options) {
-	let scrapeFunc;
-	switch (scrapingTargetType) {
-		case 'category':
-			if (shouldSkipCategoryScraping()) {
-				return { error: null, browser: null };
-			}
-			scrapeFunc = scrapeCategories;
-			break;
-		case 'product':
-			scrapeFunc = scrapeProducts;
-			break;
-		case 'exhibitor':
-			scrapeFunc = scrapeExhibitors;
-			break;
-		default:
-			const errorMessage = `Invalid scraping target type: ${scrapingTargetType}`;
-			console.error(errorMessage);
-			return { error: new Error(errorMessage), browser: null };
+	const scrapingTypeToFuncMap = {
+		category: {
+			shouldSkipScraping: shouldSkipCategoryScraping,
+			scrapeFunc: scrapeCategories,
+		},
+		product: {
+			shouldSkipScraping: shouldSkipProductScraping,
+			scrapeFunc: scrapeProducts,
+		},
+		exhibitor: {
+			shouldSkipScraping: shouldSkipExhibitorScraping,
+			scrapeFunc: scrapeExhibitors,
+		},
+	};
+
+	const { shouldSkipScraping, scrapeFunc } = scrapingTypeToFuncMap[scrapingTargetType];
+
+	if (shouldSkipScraping()) {
+		return { error: null, browser: null };
 	}
 
 	const { browser, context, page } = await loginSequence(options);

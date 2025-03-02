@@ -7,7 +7,19 @@ import config from '../../config.js';
 import { CANTON_FAIR_URL, STANDARD_TIMEOUT, PATHS } from '../constants.js';
 import { appendToJSONArrFile } from '../utils.js';
 
-function getProductCategoriesToScrape() {
+export function shouldSkipProductScraping() {
+	const productCategoriesToScrape = getProductCategoriesToScrape({ logInfo: false });
+	const skipProductScraping = productCategoriesToScrape.length === 0;
+	if (skipProductScraping) {
+		console.log('\n***\n');
+		console.log("All products' data has already been scraped. Skipping the product scraping process.");
+	}
+	return skipProductScraping;
+}
+
+function getProductCategoriesToScrape(options = { logInfo: true }) {
+	const { logInfo } = options;
+
 	let productCategoryIds = [];
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
 
@@ -54,7 +66,10 @@ function getProductCategoriesToScrape() {
 	productCategoryIds = [...new Set(productCategoryIds)];
 
 	if (productCategoryIds.length === 0) {
-		console.log('No valid config found. Scraping all product categories...');
+		if (logInfo) {
+			console.log('No valid config found. Scraping all product categories...');
+		}
+
 		productCategoryIds = normalizedCategoriesData.productCategoryIds;
 	}
 
@@ -64,11 +79,14 @@ function getProductCategoriesToScrape() {
 		);
 		return !productCategoryDataExists;
 	});
-	console.log(
-		`${productCategoryIds.length - filteredProductCategoryIds.length} (out of ${
-			productCategoryIds.length
-		}) product categories have already been scraped.`
-	);
+
+	if (logInfo) {
+		console.log(
+			`${productCategoryIds.length - filteredProductCategoryIds.length} (out of ${
+				productCategoryIds.length
+			}) product categories have already been scraped.`
+		);
+	}
 
 	return filteredProductCategoryIds.map((productCategoryId) => {
 		const productCategory = normalizedCategoriesData[productCategoryId];
