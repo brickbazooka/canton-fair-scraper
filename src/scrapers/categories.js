@@ -154,6 +154,7 @@ export async function scrapeCategories(context, page) {
 function normalizeCategoriesData(categoriesData) {
 	console.log('\n***\n');
 	console.log('Normalizing categories data...');
+
 	function objectifyCategoryStr(categoryStr) {
 		const match = categoryStr.match(/^(.*) \(([^)]+)\)$/);
 		return {
@@ -162,7 +163,7 @@ function normalizeCategoriesData(categoriesData) {
 		};
 	}
 
-	function traverseCategories(categories, parentPath = '', normalized = { productCategories: [] }) {
+	function traverseCategories(categories, parentPath = '', normalized = { productCategoryIds: [] }) {
 		for (const category of categories) {
 			if (category.name === 'International Pavilion' || category.name === 'Trade Services') {
 				continue;
@@ -211,7 +212,7 @@ function normalizeCategoriesData(categoriesData) {
 					};
 				}
 
-				normalized.productCategories.push(productCategory.id);
+				normalized.productCategoryIds.push(productCategory.id);
 			}
 		}
 		return normalized;
