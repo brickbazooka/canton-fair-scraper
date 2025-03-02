@@ -185,7 +185,7 @@ async function scrapeProductsOnPage(context, page) {
 		if (!isLocked) {
 			await card.click();
 			const newPage = await context.waitForEvent('page');
-			await newPage.waitForLoadState('domcontentloaded', { timeout: 10 * STANDARD_TIMEOUT.XXL_MS });
+			await newPage.waitForLoadState('domcontentloaded');
 			productURL = await newPage.url();
 			await newPage.close();
 		}

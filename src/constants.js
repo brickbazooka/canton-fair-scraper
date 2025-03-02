@@ -6,13 +6,9 @@ export const CANTON_FAIR_URL = 'https://www.cantonfair.org.cn/en-US/';
 export const CANTON_FAIR_LOGIN_URL = `${CANTON_FAIR_URL}login/mall/index?redirect_uri=https%3A%2F%2Fwww.cantonfair.org.cn%2Fen-US#/login`;
 
 export const STANDARD_TIMEOUT = {
-	XXXS_MS: 100,
-	XXS_MS: 500,
 	XS_MS: 1000,
 	XM_MS: 3000,
 	XL_MS: 5000,
-	XXL_MS: 10000,
-	XXXL_MS: 30000,
 };
 
 const SCRAPED_DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../data');
