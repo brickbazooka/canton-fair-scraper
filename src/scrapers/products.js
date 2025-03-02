@@ -70,7 +70,7 @@ function getProductCategoriesToScrape(options = { logInfo: true }) {
 			console.log('No valid config found. Scraping all product categories...');
 		}
 
-		productCategoryIds = normalizedCategoriesData.productCategoryIds;
+		productCategoryIds = normalizedCategoriesData.productCategories;
 	}
 
 	const filteredProductCategoryIds = productCategoryIds.filter((productCategoryId) => {
