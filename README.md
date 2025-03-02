@@ -5,9 +5,9 @@ A scraper for extracting product and category information from the (2025) [Canto
 It
 
 -   logs in to the Canton Fair website, based on the provided credentials.
--   scrapes the main categories, subcategories, and product categories.
--   scrapes product details (for specific/all categories) including images, tags, exhibitor information, and product URLs.
--   generates Excel files from the scraped product data, for each product category.
+-   scrapes metadata of all the main categories, subcategories, and product categories.
+-   scrapes product details (for specific/all categories) including images, tags, exhibitor information, and corresponding URLs.
+-   generates an Excel file curating all the scraped information.
 
 ## Requirements
 
@@ -55,14 +55,14 @@ npm start
 
 The scraper can be configured using the `./config.js` file. You can
 
--   leave the `CATEGORIES_TO_SCRAPE` array empty, to scrape all categories
+-   leave the `CATEGORIES_TO_SCRAPE` array empty, to scrape all categories.
 
     ```javascript
     const CATEGORIES_TO_SCRAPE = []; // You probably shouldn't do this
-    ...
+    // ...
     ```
 
--   specify the categories to scrape, by adding their IDs to the `CATEGORIES_TO_SCRAPE` array
+-   specify the categories to scrape, by adding their IDs to the `CATEGORIES_TO_SCRAPE` array.
 
     ```javascript
     const CATEGORIES_TO_SCRAPE = [
@@ -70,12 +70,12 @@ The scraper can be configured using the `./config.js` file. You can
     	'461148188821164032', // Fashion > Shoes
     	'461148007081988096', // Health & Recreation > Food > Candies
     ];
-    ...
+    // ...
     ```
 
--   enable/disable scraping exhibitor contact information, by setting `SHOULD_SCRAPE_EXHIBITORS` to `true` or `false`
+-   enable/disable scraping exhibitor contact information, by setting `SHOULD_SCRAPE_EXHIBITORS` to `true` or `false`.
     ```javascript
-    ...
+    // ...
     export default {
     	CATEGORIES_TO_SCRAPE,
     	SHOULD_SCRAPE_EXHIBITORS: true,
