@@ -48,7 +48,7 @@ function getTimeElapsedStr({ hours, minutes, seconds }) {
 }
 
 export function withTimer(fn) {
-	return async function (...args) {
+	return async function decoratedWithTimer(...args) {
 		const startTime = Date.now();
 		console.log(getTimeStr(startTime));
 
