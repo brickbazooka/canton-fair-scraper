@@ -9,6 +9,12 @@ It
 -   scrapes product details (for specific/all categories) including images, tags, exhibitor information, and product URLs.
 -   generates Excel files from the scraped product data, for each product category.
 
+## Requirements
+
+-   [NodeJS](https://nodejs.org/en/download/) (v18 or higher)
+-   A registered "Overseas Buyer / Purchasing Agent" account on the [Canton Fair](https://www.cantonfair.org.cn/en-US/) website
+-   A company registered under your account, [here](https://www.cantonfair.org.cn/member/embeddedpage/index?url=best-sitetraderinfo&menu=227277909705273346)
+
 ## Usage
 
 1. Clone the repository:
