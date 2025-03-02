@@ -55,19 +55,29 @@ npm start
 
 The scraper can be configured using the `./config.js` file. You can
 
--   specify the categories to scrape by adding their IDs to the `CATEGORIES_TO_SCRAPE` array
--   optionally, leave the `CATEGORIES_TO_SCRAPE` array empty to scrape all categories
--   enable/disable scraping exhibitor contact information by setting `SHOULD_SCRAPE_EXHIBITORS` to `true` or `false`
+-   leave the `CATEGORIES_TO_SCRAPE` array empty, to scrape all categories
 
-```javascript
-// Leave this empty to scrape all categories
-const CATEGORIES_TO_SCRAPE = [
-	'461147962869833728', // Electronics & Appliance > Household Electrical Appliances > Home Appliances
-	'461147343081705472', // Health & Recreation > Medicines, Health Products and Medical Devices
-];
+    ```javascript
+    const CATEGORIES_TO_SCRAPE = []; // You probably shouldn't do this
+    ...
+    ```
 
-export default {
-	CATEGORIES_TO_SCRAPE,
-	SHOULD_SCRAPE_EXHIBITORS: true,
-};
-```
+-   specify the categories to scrape, by adding their IDs to the `CATEGORIES_TO_SCRAPE` array
+
+    ```javascript
+    const CATEGORIES_TO_SCRAPE = [
+    	'461147245295706112', // Electronics & Appliance
+    	'461148188821164032', // Fashion > Shoes
+    	'461148007081988096', // Health & Recreation > Food > Candies
+    ];
+    ...
+    ```
+
+-   enable/disable scraping exhibitor contact information, by setting `SHOULD_SCRAPE_EXHIBITORS` to `true` or `false`
+    ```javascript
+    ...
+    export default {
+    	CATEGORIES_TO_SCRAPE,
+    	SHOULD_SCRAPE_EXHIBITORS: true,
+    };
+    ```

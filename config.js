@@ -1,4 +1,4 @@
-// Leave this empty to scrape all categories
+// Change this to an empty array to scrape all product categories
 const CATEGORIES_TO_SCRAPE = [
 	'461147245295706112', // Electronics & Appliance
 	'461147369757478912', // Manufacturing
