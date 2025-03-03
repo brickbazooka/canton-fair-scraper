@@ -273,7 +273,7 @@ function writeProductsDataToExcelWorkbook({
 			{ header: 'Product URL', key: 'productURL', width: 90 },
 			{ header: 'Exhibitor · Contact', key: 'exhibitorPerson', width: 24 },
 			{ header: 'Exhibitor · Email', key: 'exhibitorEmail', width: 40 },
-			{ header: 'Exhibitor · Region', key: 'exhibitorRegion', width: 40 },
+			{ header: 'Exhibitor · Region', key: 'exhibitorRegion', width: 24 },
 			{ header: 'Exhibitor · Mobile', key: 'exhibitorMobile', width: 24 },
 			{ header: 'Exhibitor · Telephone', key: 'exhibitorTelephone', width: 24 },
 			{ header: 'Exhibitor · Fax', key: 'exhibitorFax', width: 24 },
