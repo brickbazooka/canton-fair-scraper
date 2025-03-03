@@ -259,8 +259,9 @@ function writeProductsDataToExcelWorkbook({
 			{ header: 'Exhibitor', key: 'exhibitor', width: 60 },
 			{ header: 'Product URL', key: 'productURL', width: 90 },
 			{ header: 'Exhibitor · Contact', key: 'exhibitorPerson', width: 24 },
-			{ header: 'Exhibitor · Mobile', key: 'exhibitorMobile', width: 24 },
 			{ header: 'Exhibitor · Email', key: 'exhibitorEmail', width: 40 },
+			{ header: 'Exhibitor · Region', key: 'exhibitorRegion', width: 40 },
+			{ header: 'Exhibitor · Mobile', key: 'exhibitorMobile', width: 24 },
 			{ header: 'Exhibitor · Telephone', key: 'exhibitorTelephone', width: 24 },
 			{ header: 'Exhibitor · Fax', key: 'exhibitorFax', width: 24 },
 			{ header: 'Exhibitor · Website', key: 'exhibitorWebsite', width: 60 },
@@ -298,8 +299,9 @@ function writeProductsDataToExcelWorkbook({
 				exhibitor: product.company,
 				productURL: { text: productURL, hyperlink: productURL },
 				exhibitorPerson: exhibitor.contactPerson,
-				exhibitorMobile: exhibitor.mobilePhone,
 				exhibitorEmail: exhibitor.email,
+				exhibitorRegion: exhibitor.countryRegion,
+				exhibitorMobile: exhibitor.mobilePhone,
 				exhibitorTelephone: exhibitor.telephone,
 				exhibitorFax: exhibitor.fax,
 				exhibitorWebsite: exhibitor.website,
@@ -328,7 +330,7 @@ function writeProductsDataToExcelWorkbook({
 		cell.alignment = { vertical: 'middle', horizontal: 'center' };
 		cell.protection = { locked: true };
 	});
-	worksheet.autoFilter = withExhibitorData ? { from: 'A1', to: 'L1' } : { from: 'A1', to: 'F1' };
+	worksheet.autoFilter = withExhibitorData ? { from: 'A1', to: 'M1' } : { from: 'A1', to: 'F1' };
 
 	// Stylize the URL columns
 	['productURL', 'exhibitorShopURL', 'productImageURL'].forEach((column) => {
