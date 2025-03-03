@@ -18,11 +18,11 @@ export function shouldSkipProductScraping() {
 }
 
 export function getRequiredProductCategories() {
-	return getProductCategoriesToScrape({ logInfo: false, noScrapeCheckFilter: true });
+	return getProductCategoriesToScrape({ logInfo: false, noScrapedCheckFilter: true });
 }
 
-function getProductCategoriesToScrape(options = { logInfo: true, noScrapeCheckFilter: false }) {
-	const { logInfo, noScrapeCheckFilter } = options;
+function getProductCategoriesToScrape(options = { logInfo: true, noScrapedCheckFilter: false }) {
+	const { logInfo, noScrapedCheckFilter } = options;
 
 	let productCategoryIds = [];
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
@@ -82,7 +82,7 @@ function getProductCategoriesToScrape(options = { logInfo: true, noScrapeCheckFi
 		}, []);
 	}
 
-	if (noScrapeCheckFilter) {
+	if (noScrapedCheckFilter) {
 		return productCategoryIds.map((productCategoryId) => {
 			const productCategory = normalizedCategoriesData[productCategoryId];
 			productCategory.subCategory = normalizedCategoriesData[productCategory.subCategoryId];
