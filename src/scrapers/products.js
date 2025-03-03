@@ -17,8 +17,12 @@ export function shouldSkipProductScraping() {
 	return skipProductScraping;
 }
 
-function getProductCategoriesToScrape(options = { logInfo: true }) {
-	const { logInfo } = options;
+export function getRequiredProductCategories() {
+	return getProductCategoriesToScrape({ logInfo: false, noScrapeCheckFilter: true });
+}
+
+function getProductCategoriesToScrape(options = { logInfo: true, noScrapeCheckFilter: false }) {
+	const { logInfo, noScrapeCheckFilter } = options;
 
 	let productCategoryIds = [];
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
@@ -76,6 +80,15 @@ function getProductCategoriesToScrape(options = { logInfo: true }) {
 			}
 			return acc;
 		}, []);
+	}
+
+	if (noScrapeCheckFilter) {
+		return productCategoryIds.map((productCategoryId) => {
+			const productCategory = normalizedCategoriesData[productCategoryId];
+			productCategory.subCategory = normalizedCategoriesData[productCategory.subCategoryId];
+			productCategory.mainCategory = normalizedCategoriesData[productCategory.mainCategoryId];
+			return productCategory;
+		});
 	}
 
 	const filteredProductCategoryIds = productCategoryIds.filter((productCategoryId) => {
@@ -352,7 +365,7 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 	let workbook = new ExcelJS.Workbook();
 	const productsInfoWorksheet = workbook.addWorksheet('Products');
 
-	const requiredProductCategoryIds = getProductCategoriesToScrape({ logInfo: false }).map((category) => category.id);
+	const requiredProductCategoryIds = getRequiredProductCategories().map((category) => category.id);
 	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => {
 		const isJSONFile = file.endsWith('.json');
 		const productCategoryId = file.replace('.json', '');
