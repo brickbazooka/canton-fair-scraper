@@ -66,7 +66,7 @@ export async function scrapeExhibitors(context) {
 			[exhibitorId]: companyContactDetails,
 		});
 		counter++;
-		console.log(`- Scraped ${counter}/${remainingExhibitors} exhibitor${counter === 1 ? '' : 's'}.`);
+		console.log(`- Scraped ${counter}/${exhibitors.length} exhibitor${counter === 1 ? '' : 's'}.`);
 	}
 
 	console.log('All exhibitors have been scraped.');
@@ -75,7 +75,7 @@ export async function scrapeExhibitors(context) {
 function getExhibitorsToScrape(options = { logInfo: true }) {
 	const { logInfo } = options;
 
-	let productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => file.endsWith('.json'));
+	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => file.endsWith('.json'));
 
 	const uniqueExhibitors = {};
 	productFiles
