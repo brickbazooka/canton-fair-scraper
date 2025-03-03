@@ -7,7 +7,7 @@ It
 -   logs in to the Canton Fair website, based on the provided credentials.
 -   scrapes metadata of all the main categories, subcategories, and product categories.
 -   scrapes product details (for specific/all categories) including images, tags, exhibitor information, and corresponding URLs.
--   generates an Excel file curating all the scraped information.
+-   generates an Excel file, curating all the scraped information.
 
 ## Requirements
 
