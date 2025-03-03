@@ -70,7 +70,12 @@ function getProductCategoriesToScrape(options = { logInfo: true }) {
 			console.log('No valid config found. Scraping all product categories...');
 		}
 
-		productCategoryIds = normalizedCategoriesData.productCategoryIds;
+		productCategoryIds = Object.values(normalizedCategoriesData).reduce((acc, category) => {
+			if (category.isProductCategory) {
+				acc.push(category.id);
+			}
+			return acc;
+		}, []);
 	}
 
 	const filteredProductCategoryIds = productCategoryIds.filter((productCategoryId) => {

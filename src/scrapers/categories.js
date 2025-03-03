@@ -163,7 +163,7 @@ function normalizeCategoriesData(categoriesData) {
 		};
 	}
 
-	function traverseCategories(categories, parentPath = '', normalized = { productCategoryIds: [] }) {
+	function traverseCategories(categories, parentPath = '', normalized = {}) {
 		for (const category of categories) {
 			if (category.name === 'International Pavilion' || category.name === 'Trade Services') {
 				continue;
@@ -211,8 +211,6 @@ function normalizeCategoriesData(categoriesData) {
 						categoryPath: `${mainCategory.name} > ${subCategory.name} > ${productCategory.name}`,
 					};
 				}
-
-				normalized.productCategoryIds.push(productCategory.id);
 			}
 		}
 		return normalized;
