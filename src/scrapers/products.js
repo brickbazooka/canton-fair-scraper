@@ -344,13 +344,19 @@ function writeProductsDataToExcelWorkbook({
 	return workbook;
 }
 
-export function curateAllProductsDataInExcel(options = { withExhibitorData: true }) {
+export function curateRequiredDataInExcel(options = { withExhibitorData: true }) {
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
 
 	let workbook = new ExcelJS.Workbook();
 	const productsInfoWorksheet = workbook.addWorksheet('Products');
 
-	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => file.endsWith('.json'));
+	const requiredProductCategoryIds = getProductCategoriesToScrape({ logInfo: false }).map((category) => category.id);
+	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => {
+		const isJSONFile = file.endsWith('.json');
+		const productCategoryId = file.replace('.json', '');
+
+		return isJSONFile && requiredProductCategoryIds.includes(productCategoryId);
+	});
 
 	productFiles.sort((a, b) => {
 		const aCategory = normalizedCategoriesData[a.replace('.json', '')];

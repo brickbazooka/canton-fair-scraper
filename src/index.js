@@ -2,7 +2,7 @@ import config from '../config.js';
 
 import { loginSequence } from './scrapers/auth.js';
 import { scrapeCategories, shouldSkipCategoryScraping } from './scrapers/categories.js';
-import { scrapeProducts, shouldSkipProductScraping, curateAllProductsDataInExcel } from './scrapers/products.js';
+import { scrapeProducts, shouldSkipProductScraping, curateRequiredDataInExcel } from './scrapers/products.js';
 import { scrapeExhibitors, shouldSkipExhibitorScraping } from './scrapers/exhibitors.js';
 
 import { withTimer, logScrapingError } from './utils.js';
@@ -68,7 +68,7 @@ async function runScrapingSequence() {
 		await errorTolerantScrapingSequence('exhibitor', { headless: true });
 	}
 
-	curateAllProductsDataInExcel({ withExhibitorData: config.SHOULD_SCRAPE_EXHIBITORS });
+	curateRequiredDataInExcel({ withExhibitorData: config.SHOULD_SCRAPE_EXHIBITORS });
 }
 
 withTimer(runScrapingSequence)();
