@@ -5,7 +5,7 @@ import { CANTON_FAIR_URL, PATHS } from '../constants.js';
 
 import { appendToJSONObjFile } from '../utils.js';
 
-import { getRequiredProductCategories } from './products.js';
+import { getRequiredProductCategoryIds } from './products.js';
 
 export function shouldSkipExhibitorScraping() {
 	const exhibitorsToScrape = getExhibitorsToScrape({ logInfo: false });
@@ -77,7 +77,7 @@ export async function scrapeExhibitors(context) {
 function getExhibitorsToScrape(options = { logInfo: true }) {
 	const { logInfo } = options;
 
-	const requiredProductCategoryIds = getRequiredProductCategories().map((category) => category.id);
+	const requiredProductCategoryIds = getRequiredProductCategoryIds();
 	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => {
 		const isJSONFile = file.endsWith('.json');
 		const productCategoryId = file.replace('.json', '');

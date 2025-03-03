@@ -17,8 +17,8 @@ export function shouldSkipProductScraping() {
 	return skipProductScraping;
 }
 
-export function getRequiredProductCategories() {
-	return getProductCategoriesToScrape({ logInfo: false, noScrapedCheckFilter: true });
+export function getRequiredProductCategoryIds() {
+	return getProductCategoriesToScrape({ logInfo: false, noScrapedCheckFilter: true }).map((category) => category.id);
 }
 
 function getProductCategoriesToScrape(options = { logInfo: true, noScrapedCheckFilter: false }) {
@@ -365,7 +365,7 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 	let workbook = new ExcelJS.Workbook();
 	const productsInfoWorksheet = workbook.addWorksheet('Products');
 
-	const requiredProductCategoryIds = getRequiredProductCategories().map((category) => category.id);
+	const requiredProductCategoryIds = getRequiredProductCategoryIds();
 	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => {
 		const isJSONFile = file.endsWith('.json');
 		const productCategoryId = file.replace('.json', '');
