@@ -31,8 +31,9 @@ export function appendToJSONObjFile(filePath, data) {
 	fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
 }
 
-function getTimeStr(time) {
-	return `TIME: ${new Date(time).toLocaleTimeString()}`;
+function getDateTimeStr(time) {
+	const dateObj = new Date(time);
+	return `DATE: ${dateObj.toLocaleDateString()} | TIME: ${dateObj.toLocaleTimeString()}`;
 }
 
 function getTimeDifference(startTime, endTime) {
@@ -50,9 +51,9 @@ function getTimeElapsedStr({ hours, minutes, seconds }) {
 export function withTimer(fn) {
 	return async function decoratedWithTimer(...args) {
 		const startTime = Date.now();
-		console.log(getTimeStr(startTime));
+		console.log(getDateTimeStr(startTime));
 
-		// Store the start time in a global variable to access it in other loggers
+		// Store the process start time in a global variable to access it in other loggers
 		global.processStartTime = startTime;
 
 		const result = await fn(...args);
@@ -61,7 +62,7 @@ export function withTimer(fn) {
 		const { hours, minutes, seconds } = getTimeDifference(startTime, endTime);
 
 		console.log('\n***\n');
-		console.log(getTimeStr(endTime));
+		console.log(getDateTimeStr(endTime));
 		console.log(getTimeElapsedStr({ hours, minutes, seconds }));
 
 		return result;
@@ -69,19 +70,23 @@ export function withTimer(fn) {
 }
 
 export function logScrapingError(error, scrapingTargetType) {
+	const errorTime = Date.now();
+
 	let timeElapesedStr = '';
 	if (global.processStartTime) {
-		const endTime = Date.now();
-		const { hours, minutes, seconds } = getTimeDifference(global.processStartTime, endTime);
+		const { hours, minutes, seconds } = getTimeDifference(global.processStartTime, errorTime);
 		timeElapesedStr = getTimeElapsedStr({ hours, minutes, seconds });
 	}
 
-	const pluralizedScrapingTargetType = scrapingTargetType === 'category' ? 'categories' : `${scrapingTargetType}s`;
-
 	console.log('\n***\n');
+
+	console.log(getDateTimeStr(errorTime));
 	if (timeElapesedStr) {
 		console.log(timeElapesedStr);
 	}
-	console.error(`An error occurred while scraping ${pluralizedScrapingTargetType}:`, error);
+
+	const pluralizedScrapingTargetType = scrapingTargetType === 'category' ? 'categories' : `${scrapingTargetType}s`;
+	console.error(`\nAn error occurred while scraping ${pluralizedScrapingTargetType}:`, error);
+
 	console.log('\n***\n');
 }
