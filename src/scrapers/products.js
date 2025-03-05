@@ -133,7 +133,7 @@ async function scrapeProductsFromCategory(context, productCategory) {
 	} = productCategory;
 
 	console.log('\n***\n');
-	console.log(`Scraping products from the product category "${productCategoryName} (ID: ${productCategoryId})"...`);
+	console.log(`Scraping products from the product category "${productCategoryName}" (ID: ${productCategoryId})...`);
 	console.log(
 		`Parent categories: ${mainCategoryName} (ID: ${mainCategoryId}) > ${subCategoryName} (ID: ${subCategoryId})`
 	);
@@ -373,6 +373,13 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 		return isJSONFile && requiredProductCategoryIds.includes(productCategoryId);
 	});
 
+	console.log('\n***\n');
+	console.log(
+		`Creating an Excel file for all the available ${productFiles.length} product categories,${
+			options.withExhibitorData ? ' with exhibitor data, ' : ' '
+		}at ${PATHS.CURATED_PRODUCTS_XLSX} ...`
+	);
+
 	productFiles.sort((a, b) => {
 		const aCategory = normalizedCategoriesData[a.replace('.json', '')];
 		const bCategory = normalizedCategoriesData[b.replace('.json', '')];
@@ -451,11 +458,5 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 		cell.font = { color: { argb: 'FF0000FF' }, underline: true, color: { theme: 10 } };
 	});
 
-	console.log('\n***\n');
-	console.log(
-		`Creating an Excel file for all the available ${productFiles.length} product categories,${
-			options.withExhibitorData ? ' with exhibitor data, ' : ' '
-		}at ${PATHS.CURATED_PRODUCTS_XLSX} ...`
-	);
 	workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
 }
