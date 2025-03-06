@@ -359,11 +359,11 @@ function writeProductsDataToExcelWorkbook({
 	return workbook;
 }
 
-export function curateRequiredDataInExcel(options = { withExhibitorData: true }) {
+export async function curateRequiredDataInExcel(options = { withExhibitorData: true }) {
 	const normalizedCategoriesData = JSON.parse(fs.readFileSync(PATHS.NORMALIZED_CATEGORIES_JSON, 'utf-8'));
 
 	let workbook = new ExcelJS.Workbook();
-	const productsInfoWorksheet = workbook.addWorksheet('Products');
+	const productsInfoWorksheet = workbook.addWorksheet('Index');
 
 	const requiredProductCategoryIds = getRequiredProductCategoryIds();
 	const productFiles = fs.readdirSync(PATHS.PRODUCTS_DATA_DIR).filter((file) => {
@@ -398,7 +398,7 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 
 		workbook = writeProductsDataToExcelWorkbook({
 			workbook,
-			worksheetName: `CID_${productCategoryId}`,
+			worksheetName: productCategoryId,
 			productCategory,
 			productsArray,
 			withExhibitorData: options.withExhibitorData,
@@ -418,7 +418,7 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 		productsInfoWorksheet.addRow({
 			categoryPath: productCategory.categoryPath,
 			productsCount: productCategory.productsCount,
-			productSheetName: { text: `CID_${productCategoryId}`, hyperlink: `#'CID_${productCategoryId}'!A1` },
+			productSheetName: { text: `CID:${productCategoryId}`, hyperlink: `#'${productCategoryId}'!A1` },
 		});
 	});
 
@@ -458,5 +458,5 @@ export function curateRequiredDataInExcel(options = { withExhibitorData: true })
 		cell.font = { color: { argb: 'FF0000FF' }, underline: true, color: { theme: 10 } };
 	});
 
-	workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
+	await workbook.xlsx.writeFile(PATHS.CURATED_PRODUCTS_XLSX);
 }

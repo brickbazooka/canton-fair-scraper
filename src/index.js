@@ -68,7 +68,7 @@ async function runScrapingSequence() {
 		await errorTolerantScrapingSequence('exhibitor', { headless: true });
 	}
 
-	curateRequiredDataInExcel({ withExhibitorData: config.SHOULD_SCRAPE_EXHIBITORS });
+	await curateRequiredDataInExcel({ withExhibitorData: config.SHOULD_SCRAPE_EXHIBITORS });
 }
 
 withTimer(runScrapingSequence)();
